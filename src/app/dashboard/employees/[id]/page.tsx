@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCertStatus, formatDateHe } from "@/types/database";
 import type { Employee, Certification } from "@/types/database";
 import { DeleteEmployeeButton } from "./delete-button";
+import { getSignedUrl } from "@/app/dashboard/certifications/actions";
+import { CertFileViewer } from "./cert-file-viewer";
 
 export default async function EmployeeDetailPage({
   params,
@@ -30,6 +32,19 @@ export default async function EmployeeDetailPage({
     .order("expiry_date", { ascending: true });
 
   const emp = employee as Employee;
+
+  // Generate signed URLs for certs with files
+  const certsWithUrls = await Promise.all(
+    ((certifications || []) as (Certification & { cert_types: { name: string } })[]).map(
+      async (cert) => {
+        let signedUrl: string | null = null;
+        if (cert.image_url) {
+          signedUrl = await getSignedUrl(cert.image_url);
+        }
+        return { ...cert, signedUrl };
+      }
+    )
+  );
 
   const statusConfig = {
     valid: {
@@ -137,23 +152,32 @@ export default async function EmployeeDetailPage({
           </div>
         ) : (
           <div className="space-y-3">
-            {(certifications as (Certification & { cert_types: { name: string } })[]).map((cert) => {
+            {certsWithUrls.map((cert) => {
               const status = getCertStatus(cert.expiry_date);
               const config = statusConfig[status];
+              const isPdf = cert.image_url?.endsWith(".pdf");
 
               return (
                 <div
                   key={cert.id}
                   className="flex flex-col gap-2 rounded-lg border border-gray-200 p-4 sm:flex-row sm:items-center sm:justify-between"
                 >
-                  <div className="space-y-1">
-                    <h3 className="font-medium text-gray-900">
-                      {cert.cert_types?.name ?? cert.cert_type_name ?? "-"}
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      הונפקה: {formatDateHe(cert.issue_date)} | פג תוקף:{" "}
-                      {formatDateHe(cert.expiry_date)}
-                    </p>
+                  <div className="flex items-center gap-3">
+                    {cert.signedUrl && (
+                      <CertFileViewer
+                        src={cert.signedUrl}
+                        isPdf={!!isPdf}
+                      />
+                    )}
+                    <div className="space-y-1">
+                      <h3 className="font-medium text-gray-900">
+                        {cert.cert_types?.name ?? cert.cert_type_name ?? "-"}
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        הונפקה: {formatDateHe(cert.issue_date)} | פג תוקף:{" "}
+                        {formatDateHe(cert.expiry_date)}
+                      </p>
+                    </div>
                   </div>
                   <span
                     className={`inline-flex items-center gap-1.5 self-start rounded-full px-3 py-1 text-xs font-medium ${config.bg} ${config.text}`}

@@ -125,3 +125,11 @@ CREATE POLICY "cert_images_upload" ON storage.objects FOR INSERT
 -- Storage policy: authenticated users can view their uploads
 CREATE POLICY "cert_images_select" ON storage.objects FOR SELECT
   USING (bucket_id = 'cert-images' AND auth.role() = 'authenticated');
+
+-- Storage policy: authenticated users can update their uploads
+CREATE POLICY "cert_images_update" ON storage.objects FOR UPDATE
+  USING (bucket_id = 'cert-images' AND auth.role() = 'authenticated');
+
+-- Storage policy: authenticated users can delete their uploads
+CREATE POLICY "cert_images_delete" ON storage.objects FOR DELETE
+  USING (bucket_id = 'cert-images' AND auth.role() = 'authenticated');

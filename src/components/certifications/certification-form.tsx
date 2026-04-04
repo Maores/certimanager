@@ -6,6 +6,7 @@ import {
   createCertification,
   updateCertification,
   uploadCertImage,
+  deleteCertImage,
 } from "@/app/dashboard/certifications/actions";
 
 interface CertificationFormProps {
@@ -108,27 +109,54 @@ export default function CertificationForm({
     }
   }
 
+  const isPdf = imageUrl?.endsWith(".pdf") || imagePreview?.startsWith("data:application/pdf");
+
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (ev) => setImagePreview(ev.target?.result as string);
-    reader.readAsDataURL(file);
+    // Client-side validation
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/heic", "application/pdf"];
+    if (!allowedTypes.includes(file.type)) {
+      alert("סוג קובץ לא נתמך. יש להעלות JPG, PNG, WebP או PDF");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert("הקובץ גדול מדי. הגודל המקסימלי הוא 5MB");
+      return;
+    }
+
+    if (file.type !== "application/pdf") {
+      const reader = new FileReader();
+      reader.onload = (ev) => setImagePreview(ev.target?.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      setImagePreview("pdf");
+    }
 
     setUploading(true);
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const url = await uploadCertImage(fd);
-      setImageUrl(url);
+      const path = await uploadCertImage(fd);
+      setImageUrl(path);
     } catch (err) {
-      console.error("Upload failed:", err);
-      alert("שגיאה בהעלאת התמונה");
+      const msg = err instanceof Error ? err.message : "שגיאה בהעלאת הקובץ";
+      alert(msg);
       setImagePreview(certification?.image_url || null);
+      setImageUrl(certification?.image_url || "");
     } finally {
       setUploading(false);
     }
+  }
+
+  async function handleRemoveFile() {
+    if (imageUrl && imageUrl !== certification?.image_url) {
+      // Delete newly uploaded file from storage
+      await deleteCertImage(imageUrl);
+    }
+    setImageUrl("");
+    setImagePreview(null);
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -251,20 +279,52 @@ export default function CertificationForm({
         </div>
       </div>
 
-      {/* Image upload */}
+      {/* File upload */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          תמונת הסמכה
+          קובץ הסמכה
         </label>
         <div className="flex items-start gap-4">
           {imagePreview && (
-            <div className="w-24 h-24 rounded-lg border border-gray-200 overflow-hidden flex-shrink-0 bg-gray-50">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={imagePreview}
-                alt="תצוגה מקדימה"
-                className="w-full h-full object-cover"
-              />
+            <div className="relative w-24 h-24 flex-shrink-0">
+              <div className="w-full h-full rounded-lg border border-gray-200 overflow-hidden bg-gray-50">
+                {imagePreview === "pdf" || isPdf ? (
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-red-50">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-8 w-8 text-red-500"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                      />
+                    </svg>
+                    <span className="text-[10px] text-red-600 mt-1 font-medium">PDF</span>
+                  </div>
+                ) : (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={imagePreview}
+                    alt="תצוגה מקדימה"
+                    className="w-full h-full object-cover"
+                  />
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={handleRemoveFile}
+                className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center shadow hover:bg-red-600 transition-colors"
+                title="הסר קובץ"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
           )}
           <div className="flex-1">
@@ -297,7 +357,7 @@ export default function CertificationForm({
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
                     />
                   </svg>
-                  <span className="text-sm font-medium">מעלה תמונה...</span>
+                  <span className="text-sm font-medium">מעלה קובץ...</span>
                 </div>
               ) : (
                 <>
@@ -312,20 +372,20 @@ export default function CertificationForm({
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
                     />
                   </svg>
                   <span className="text-xs text-gray-500">
-                    לחץ לבחירת תמונה
+                    לחץ לבחירת קובץ
                   </span>
                   <span className="text-[10px] text-gray-400 mt-0.5">
-                    JPG, PNG עד 5MB
+                    JPG, PNG, PDF עד 5MB
                   </span>
                 </>
               )}
               <input
                 type="file"
-                accept="image/*"
+                accept="image/*,.pdf,application/pdf"
                 onChange={handleImageUpload}
                 disabled={uploading}
                 className="hidden"

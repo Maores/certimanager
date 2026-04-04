@@ -76,6 +76,15 @@ export async function deleteCertification(id: string) {
   revalidatePath("/dashboard/certifications");
 }
 
+const ALLOWED_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "application/pdf",
+];
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
 export async function uploadCertImage(formData: FormData) {
   const supabase = await createClient();
 
@@ -84,7 +93,15 @@ export async function uploadCertImage(formData: FormData) {
     throw new Error("No file provided");
   }
 
-  const fileExt = file.name.split(".").pop();
+  if (file.size > MAX_FILE_SIZE) {
+    throw new Error("הקובץ גדול מדי. הגודל המקסימלי הוא 5MB");
+  }
+
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    throw new Error("סוג קובץ לא נתמך. יש להעלות JPG, PNG, WebP או PDF");
+  }
+
+  const fileExt = file.name.split(".").pop()?.toLowerCase() || "bin";
   const fileName = `${crypto.randomUUID()}.${fileExt}`;
   const filePath = `certs/${fileName}`;
 
@@ -93,12 +110,30 @@ export async function uploadCertImage(formData: FormData) {
     .upload(filePath, file);
 
   if (uploadError) {
-    throw new Error(`Failed to upload image: ${uploadError.message}`);
+    throw new Error(`שגיאה בהעלאת הקובץ: ${uploadError.message}`);
   }
 
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from("cert-images").getPublicUrl(filePath);
+  // Return the storage path (not a public URL — bucket is private)
+  return filePath;
+}
 
-  return publicUrl;
+export async function getSignedUrl(filePath: string) {
+  if (!filePath) return null;
+
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.storage
+    .from("cert-images")
+    .createSignedUrl(filePath, 60 * 60); // 1 hour
+
+  if (error) return null;
+  return data.signedUrl;
+}
+
+export async function deleteCertImage(filePath: string) {
+  if (!filePath) return;
+
+  const supabase = await createClient();
+
+  await supabase.storage.from("cert-images").remove([filePath]);
 }
