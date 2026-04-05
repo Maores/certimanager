@@ -22,6 +22,7 @@ export async function createEmployee(formData: FormData) {
     department: formData.get("department") as string,
     phone: formData.get("phone") as string,
     email: formData.get("email") as string,
+    status: (formData.get("status") as string) || "פעיל",
     notes: (formData.get("notes") as string) || null,
   });
 
@@ -52,6 +53,7 @@ export async function updateEmployee(id: string, formData: FormData) {
       department: formData.get("department") as string,
       phone: formData.get("phone") as string,
       email: formData.get("email") as string,
+      status: (formData.get("status") as string) || "פעיל",
       notes: (formData.get("notes") as string) || null,
     })
     .eq("id", id)

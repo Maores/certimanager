@@ -17,7 +17,7 @@ interface CertificationFormProps {
     cert_type_id: string;
   };
   defaultEmployeeId?: string;
-  existingCerts?: { employee_id: string; cert_type_id: string; expiry_date: string }[];
+  existingCerts?: { employee_id: string; cert_type_id: string; expiry_date: string | null }[];
 }
 
 export default function CertificationForm({
@@ -61,15 +61,21 @@ export default function CertificationForm({
       (c) => c.employee_id === employeeId && c.cert_type_id === certTypeId
     );
     if (existing) {
-      const expiry = new Date(existing.expiry_date);
-      const now = new Date();
-      if (expiry > now) {
-        setWarning(
-          `לעובד זה כבר יש הסמכה מסוג זה בתוקף (עד ${expiry.toLocaleDateString("he-IL")}). ההסמכה החדשה תחליף את הקיימת.`
-        );
+      if (existing.expiry_date) {
+        const expiry = new Date(existing.expiry_date);
+        const now = new Date();
+        if (expiry > now) {
+          setWarning(
+            `לעובד זה כבר יש הסמכה מסוג זה בתוקף (עד ${expiry.toLocaleDateString("he-IL")}). ההסמכה החדשה תחליף את הקיימת.`
+          );
+        } else {
+          setWarning(
+            `לעובד זה הייתה הסמכה מסוג זה שפג תוקפה (${expiry.toLocaleDateString("he-IL")}). ההסמכה החדשה תירשם כחידוש.`
+          );
+        }
       } else {
         setWarning(
-          `לעובד זה הייתה הסמכה מסוג זה שפג תוקפה (${expiry.toLocaleDateString("he-IL")}). ההסמכה החדשה תירשם כחידוש.`
+          `לעובד זה כבר יש הסמכה מסוג זה (ללא תאריך תפוגה). ההסמכה החדשה תחליף את הקיימת.`
         );
       }
     } else {

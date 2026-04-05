@@ -65,6 +65,12 @@ export default async function EmployeeDetailPage({
       text: "text-red-800",
       dot: "bg-red-500",
     },
+    unknown: {
+      label: "לא ידוע",
+      bg: "bg-gray-100",
+      text: "text-gray-600",
+      dot: "bg-gray-400",
+    },
   };
 
   return (

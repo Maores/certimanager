@@ -10,6 +10,7 @@ const statusConfig: Record<
   { label: string; bg: string; text: string }
 > = {
   valid: { label: "בתוקף", bg: "bg-green-100", text: "text-green-800" },
+  unknown: { label: "לא ידוע", bg: "bg-gray-100", text: "text-gray-600" },
   expiring_soon: {
     label: "פג בקרוב",
     bg: "bg-yellow-100",

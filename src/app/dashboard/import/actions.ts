@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { parseExcel } from "@/lib/excel-parser";
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 // --- Shared types (used by client components) ---
 
@@ -315,6 +315,7 @@ export async function executeBulkImport(
       },
     };
   } catch (e: any) {
-    return { success: false, error: `שגיאה כללית בייבוא: ${e.message}` };
+    console.error("Bulk import error:", e);
+    return { success: false, error: "שגיאה כללית בייבוא. נסו שוב מאוחר יותר" };
   }
 }

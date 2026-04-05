@@ -30,6 +30,7 @@ CREATE TABLE employees (
   department TEXT NOT NULL DEFAULT '',
   phone TEXT NOT NULL DEFAULT '',
   email TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'פעיל',
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -40,8 +41,8 @@ CREATE TABLE certifications (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   employee_id UUID NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
   cert_type_id UUID NOT NULL REFERENCES cert_types(id) ON DELETE RESTRICT,
-  issue_date DATE NOT NULL,
-  expiry_date DATE NOT NULL,
+  issue_date DATE,
+  expiry_date DATE,
   image_url TEXT,
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),

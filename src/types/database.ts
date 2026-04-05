@@ -14,6 +14,7 @@ export interface Employee {
   department: string;
   phone: string;
   email: string;
+  status: string;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -32,8 +33,8 @@ export interface Certification {
   employee_id: string;
   cert_type_id: string;
   cert_type_name?: string;
-  issue_date: string;
-  expiry_date: string;
+  issue_date: string | null;
+  expiry_date: string | null;
   image_url: string | null;
   notes: string | null;
   created_at: string;
@@ -44,9 +45,10 @@ export interface EmployeeWithCerts extends Employee {
   certifications: (Certification & { cert_type: CertType })[];
 }
 
-export type CertStatus = "valid" | "expiring_soon" | "expired";
+export type CertStatus = "valid" | "expiring_soon" | "expired" | "unknown";
 
-export function getCertStatus(expiryDate: string): CertStatus {
+export function getCertStatus(expiryDate: string | null): CertStatus {
+  if (!expiryDate) return "unknown";
   const expiry = new Date(expiryDate);
   const now = new Date();
   const thirtyDaysFromNow = new Date();
@@ -57,11 +59,13 @@ export function getCertStatus(expiryDate: string): CertStatus {
   return "valid";
 }
 
-export function formatDateHe(dateString: string): string {
+export function formatDateHe(dateString: string | null): string {
+  if (!dateString) return "—";
   return new Date(dateString).toLocaleDateString("he-IL");
 }
 
-export function daysUntilExpiry(expiryDate: string): number {
+export function daysUntilExpiry(expiryDate: string | null): number | null {
+  if (!expiryDate) return null;
   const expiry = new Date(expiryDate);
   const now = new Date();
   return Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));

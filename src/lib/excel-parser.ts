@@ -41,8 +41,8 @@ export interface ParseResult {
 // NOTE: "כביש 6 + נת\"ע" must come BEFORE "כביש 6" to match the longer string first
 
 const WORKER_SHEETS: Record<string, string | null> = {
-  "מאושרי נת\"ע": "נת\"ע",
-  "מאושרי כביש 6 + נת\"ע": "כביש 6 + נת\"ע",
+  "מאושרי נת״ע": "נת״ע",
+  "מאושרי כביש 6 + נת״ע": "כביש 6 + נת״ע",
   "מאושרי כביש 6": "כביש 6",
   "PFI": "PFI",
   "פעיל - ללא הסמכה מוגדרת": null,
@@ -73,11 +73,23 @@ export function normalizeEmployeeNumber(raw: string): string {
 }
 
 export function normalizeStatus(raw: string | undefined): { value: string; warning: boolean } {
-  if (!raw || !raw.trim()) return { value: "פעיל", warning: false };
+  if (!raw || !raw.trim() || raw.trim() === "-") return { value: "פעיל", warning: false };
   const trimmed = raw.trim();
   const mapped = STATUS_MAP[trimmed];
   if (mapped) return { value: mapped, warning: false };
   return { value: "פעיל", warning: true };
+}
+
+function findHeaderRow(rows: any[][]): number {
+  for (let i = 0; i < Math.min(10, rows.length); i++) {
+    const row = rows[i];
+    if (!row) continue;
+    const joined = row.map((c: any) => String(c || "")).join(" ");
+    if (joined.includes("מספר זהות") || joined.includes("שם משפחה")) {
+      return i;
+    }
+  }
+  return -1;
 }
 
 export function parseExcel(buffer: ArrayBuffer): ParseResult {
@@ -99,19 +111,46 @@ export function parseExcel(buffer: ArrayBuffer): ParseResult {
     if (certTypeName) certTypeNames.add(certTypeName);
 
     const worksheet = workbook.Sheets[sheetName];
-    const rows = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet, { defval: "" });
+
+    // Find header row dynamically (sheets have title + summary rows before headers)
+    const rawRows = XLSX.utils.sheet_to_json<any[]>(worksheet, { defval: "", header: 1 });
+    const headerIdx = findHeaderRow(rawRows);
+    if (headerIdx < 0) continue;
+
+    // Re-parse using discovered header row
+    const headers = rawRows[headerIdx].map((h: any) => String(h || "").trim());
+    const dataRows = rawRows.slice(headerIdx + 1);
 
     const parsedWorkers: ParsedWorker[] = [];
     const skippedRows: SkippedRow[] = [];
 
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
-      const rowNum = i + 2;
+    // Build column index map
+    const colIdx = (names: string[]) => {
+      for (const n of names) {
+        const idx = headers.findIndex((h: string) => h.includes(n));
+        if (idx >= 0) return idx;
+      }
+      return -1;
+    };
 
-      const empNumRaw = String(
-        row["מספר זהות"] || row["דרכון"] || row["מספר זהות / דרכון"] ||
-        row["ת.ז"] || row["ת.ז."] || row["מס זהות"] || ""
-      );
+    const empNumCol = colIdx(["מספר זהות", "דרכון", "ת.ז"]);
+    const lastNameCol = colIdx(["שם משפחה"]);
+    const firstNameCol = colIdx(["שם פרטי"]);
+    const statusCol = colIdx(["סטטוס", "סטאטוס"]);
+    const notesCol = colIdx(["הערות", "משימות", "הערה"]);
+    const responsibleCol = colIdx(["אחראי"]);
+
+    for (let i = 0; i < dataRows.length; i++) {
+      const row = dataRows[i];
+      const rowNum = headerIdx + i + 2; // 1-based Excel row
+
+      // Skip section separator rows (e.g. "✓ פעילים - תקינים (53)")
+      const firstCell = String(row[0] || "").trim();
+      if (firstCell.startsWith("✓") || firstCell.startsWith("⚠") ||
+          firstCell.startsWith("📋") || firstCell.startsWith("❓") ||
+          firstCell.startsWith("❌") || firstCell === "") continue;
+
+      const empNumRaw = empNumCol >= 0 ? String(row[empNumCol] || "") : "";
       const empNum = normalizeEmployeeNumber(empNumRaw);
 
       if (empNum.length < 5) {
@@ -120,8 +159,8 @@ export function parseExcel(buffer: ArrayBuffer): ParseResult {
         continue;
       }
 
-      const firstName = String(row["שם פרטי"] || "").trim();
-      const lastName = String(row["שם משפחה"] || "").trim();
+      const firstName = firstNameCol >= 0 ? String(row[firstNameCol] || "").trim() : "";
+      const lastName = lastNameCol >= 0 ? String(row[lastNameCol] || "").trim() : "";
 
       if (!firstName && !lastName) {
         skippedRows.push({ row: rowNum, reason: "חסר שם פרטי ושם משפחה" });
@@ -129,11 +168,13 @@ export function parseExcel(buffer: ArrayBuffer): ParseResult {
         continue;
       }
 
-      const statusRaw = String(row["סטטוס"] || row["סטאטוס"] || "").trim();
+      const statusRaw = statusCol >= 0 ? String(row[statusCol] || "").trim() : "";
       const { value: status, warning: statusWarning } = normalizeStatus(statusRaw);
 
-      const notes = String(row["הערות"] || row["משימות"] || row["הערה"] || "").trim();
-      const responsible = String(row["אחראי"] || "").trim();
+      const notesRaw = notesCol >= 0 ? String(row[notesCol] || "").trim() : "";
+      const notes = notesRaw === "-" ? "" : notesRaw;
+      const responsibleRaw = responsibleCol >= 0 ? String(row[responsibleCol] || "").trim() : "";
+      const responsible = responsibleRaw === "-" ? "" : responsibleRaw;
 
       const worker: ParsedWorker = {
         employeeNumber: empNum,

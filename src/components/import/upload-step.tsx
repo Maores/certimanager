@@ -23,8 +23,8 @@ export function UploadStep({ onParsed }: UploadStepProps) {
         setError("יש להעלות קובץ בפורמט xlsx בלבד");
         return;
       }
-      if (file.size > 10 * 1024 * 1024) {
-        setError("הקובץ גדול מדי. הגודל המקסימלי הוא 10MB");
+      if (file.size > 5 * 1024 * 1024) {
+        setError("הקובץ גדול מדי. הגודל המקסימלי הוא 5MB");
         return;
       }
 
@@ -114,7 +114,7 @@ export function UploadStep({ onParsed }: UploadStepProps) {
               גררו קובץ Excel לכאן או לחצו לבחירה
             </p>
             <p className="mt-1 text-xs text-gray-500">
-              קובץ xlsx בלבד, עד 10MB
+              קובץ xlsx בלבד, עד 5MB
             </p>
           </>
         )}
