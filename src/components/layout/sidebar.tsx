@@ -58,7 +58,7 @@ export default function Sidebar({ items }: SidebarProps) {
       {/* Mobile bottom tab bar */}
       <nav className="fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 z-30 md:hidden safe-area-bottom">
         <div className="flex justify-around items-center h-16 px-1">
-          {items.map((item) => {
+          {items.slice(0, 4).map((item) => {
             const isActive =
               item.href === "/dashboard"
                 ? pathname === "/dashboard"

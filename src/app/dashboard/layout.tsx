@@ -8,6 +8,7 @@ const navItems: NavItem[] = [
   { label: "עובדים", href: "/dashboard/employees", icon: "👥" },
   { label: "הסמכות", href: "/dashboard/certifications", icon: "📜" },
   { label: "סוגי הסמכות", href: "/dashboard/cert-types", icon: "🏷️" },
+  { label: "ייבוא", href: "/dashboard/import", icon: "📥" },
 ];
 
 export default async function DashboardLayout({

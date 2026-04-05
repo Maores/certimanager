@@ -17,8 +17,8 @@ export async function createCertification(formData: FormData) {
   const { error } = await supabase.from("certifications").insert({
     employee_id,
     cert_type_id,
-    issue_date,
-    expiry_date,
+    issue_date: issue_date || null,
+    expiry_date: expiry_date || null,
     image_url: image_url || null,
     notes: notes || null,
   });
@@ -34,6 +34,19 @@ export async function createCertification(formData: FormData) {
 export async function updateCertification(id: string, formData: FormData) {
   const supabase = await createClient();
 
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data: cert } = await supabase
+    .from("certifications")
+    .select("employee_id, employees!inner(manager_id)")
+    .eq("id", id)
+    .single();
+
+  if (!cert || (cert.employees as any).manager_id !== user.id) {
+    throw new Error("Unauthorized");
+  }
+
   const employee_id = formData.get("employee_id") as string;
   const cert_type_id = formData.get("cert_type_id") as string;
   const issue_date = formData.get("issue_date") as string;
@@ -46,8 +59,8 @@ export async function updateCertification(id: string, formData: FormData) {
     .update({
       employee_id,
       cert_type_id,
-      issue_date,
-      expiry_date,
+      issue_date: issue_date || null,
+      expiry_date: expiry_date || null,
       image_url: image_url || null,
       notes: notes || null,
     })
@@ -63,6 +76,19 @@ export async function updateCertification(id: string, formData: FormData) {
 
 export async function deleteCertification(id: string) {
   const supabase = await createClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data: cert } = await supabase
+    .from("certifications")
+    .select("employee_id, employees!inner(manager_id)")
+    .eq("id", id)
+    .single();
+
+  if (!cert || (cert.employees as any).manager_id !== user.id) {
+    throw new Error("Unauthorized");
+  }
 
   const { error } = await supabase
     .from("certifications")

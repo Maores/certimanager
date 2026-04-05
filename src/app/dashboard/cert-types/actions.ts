@@ -36,6 +36,12 @@ export async function createCertType(formData: FormData) {
 export async function updateCertType(id: string, formData: FormData) {
   const supabase = await createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) throw new Error("Not authenticated");
+
   const name = formData.get("name") as string;
   const default_validity_months = parseInt(
     formData.get("default_validity_months") as string,
@@ -50,7 +56,8 @@ export async function updateCertType(id: string, formData: FormData) {
       default_validity_months,
       description: description || null,
     })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("manager_id", user.id);
 
   if (error) {
     throw new Error(`Failed to update cert type: ${error.message}`);
@@ -62,7 +69,13 @@ export async function updateCertType(id: string, formData: FormData) {
 export async function deleteCertType(id: string) {
   const supabase = await createClient();
 
-  const { error } = await supabase.from("cert_types").delete().eq("id", id);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) throw new Error("Not authenticated");
+
+  const { error } = await supabase.from("cert_types").delete().eq("id", id).eq("manager_id", user.id);
 
   if (error) {
     if (error.message.includes("violates foreign key constraint")) {
