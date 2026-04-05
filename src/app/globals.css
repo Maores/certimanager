@@ -1,16 +1,35 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  /* Primary palette */
   --primary: #2563eb;
   --primary-hover: #1d4ed8;
-  --success: #16a34a;
-  --warning: #f59e0b;
+  --primary-light: #eff6ff;
+  --primary-ring: rgba(37, 99, 235, 0.2);
+
+  /* Semantic colors */
+  --success: #059669;
+  --success-light: #ecfdf5;
+  --warning: #d97706;
+  --warning-light: #fffbeb;
   --danger: #dc2626;
+  --danger-light: #fef2f2;
+
+  /* Neutrals */
+  --background: #f8fafc;
+  --foreground: #0f172a;
   --muted: #64748b;
+  --muted-foreground: #94a3b8;
   --border: #e2e8f0;
+  --border-light: #f1f5f9;
   --card: #ffffff;
+  --card-hover: #fafbfc;
+
+  /* Shadows */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.06), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
 }
 
 @theme inline {
@@ -18,18 +37,34 @@
   --color-foreground: var(--foreground);
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
+  --color-primary-light: var(--primary-light);
   --color-success: var(--success);
+  --color-success-light: var(--success-light);
   --color-warning: var(--warning);
+  --color-warning-light: var(--warning-light);
   --color-danger: var(--danger);
+  --color-danger-light: var(--danger-light);
   --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
+  --color-border-light: var(--border-light);
   --color-card: var(--card);
+  --color-card-hover: var(--card-hover);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+  font-family: "Noto Sans Hebrew", "Segoe UI", Tahoma, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Default 80% zoom on desktop for better data density */
+@media (min-width: 768px) {
+  html {
+    zoom: 0.8;
+  }
 }
 
 /* Ensure numbers display LTR even in RTL context */
@@ -48,4 +83,42 @@ body {
   0% { opacity: 0.5; }
   50% { opacity: 1; }
   100% { opacity: 0.5; }
+}
+
+/* Smooth page transitions */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* Better scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Focus ring utility */
+.focus-ring {
+  outline: none;
+}
+.focus-ring:focus-visible {
+  box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--primary);
+  border-radius: inherit;
 }

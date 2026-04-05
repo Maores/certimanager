@@ -4,19 +4,21 @@ import type { CertStatus } from "@/types/database";
 import Link from "next/link";
 import { deleteCertification } from "./actions";
 import { DeleteButton } from "@/components/ui/delete-button";
+import { Search, Plus, Paperclip, FileText, Image } from "lucide-react";
 
 const statusConfig: Record<
   CertStatus,
-  { label: string; bg: string; text: string }
+  { label: string; bg: string; text: string; dot: string }
 > = {
-  valid: { label: "בתוקף", bg: "bg-green-100", text: "text-green-800" },
-  unknown: { label: "לא ידוע", bg: "bg-gray-100", text: "text-gray-600" },
+  valid: { label: "בתוקף", bg: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500" },
+  unknown: { label: "לא ידוע", bg: "bg-gray-100", text: "text-gray-600", dot: "bg-gray-400" },
   expiring_soon: {
     label: "פג בקרוב",
-    bg: "bg-yellow-100",
-    text: "text-yellow-800",
+    bg: "bg-amber-50",
+    text: "text-amber-700",
+    dot: "bg-amber-500",
   },
-  expired: { label: "פג תוקף", bg: "bg-red-100", text: "text-red-800" },
+  expired: { label: "פג תוקף", bg: "bg-red-50", text: "text-red-700", dot: "bg-red-500" },
 };
 
 type FilterTab = "all" | CertStatus;
@@ -87,12 +89,20 @@ export default async function CertificationsPage({
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h1 className="text-2xl font-bold text-gray-900">הסמכות</h1>
+        <div>
+          <h1 className="text-2xl font-bold" style={{ color: "#0f172a" }}>
+            הסמכות
+          </h1>
+          <p className="text-sm mt-1" style={{ color: "#94a3b8" }}>
+            ניהול ומעקב אחר הסמכות העובדים
+          </p>
+        </div>
         <Link
           href="/dashboard/certifications/new"
-          className="inline-flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+          className="inline-flex items-center justify-center gap-2 text-white px-5 py-2.5 rounded-lg transition-colors text-sm font-medium"
+          style={{ backgroundColor: "#2563eb", boxShadow: "var(--shadow-sm)" }}
         >
-          <span>+</span>
+          <Plus className="h-4 w-4" />
           <span>הוסף הסמכה</span>
         </Link>
       </div>
@@ -105,27 +115,19 @@ export default async function CertificationsPage({
             name="search"
             defaultValue={searchQuery}
             placeholder="חיפוש לפי שם עובד..."
-            className="w-full pr-4 pl-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+            className="w-full pr-4 pl-10 py-2.5 rounded-lg text-sm transition-colors"
+            style={{
+              border: "1px solid #e2e8f0",
+              outline: "none",
+            }}
           />
           <input type="hidden" name="filter" value={currentFilter} />
           <button
             type="submit"
-            className="absolute left-2 top-1/2 -translate-y-1/2 rounded p-1 text-gray-400 hover:text-gray-600"
+            className="absolute left-3 top-1/2 -translate-y-1/2 rounded p-0.5 transition-colors"
+            style={{ color: "#94a3b8" }}
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
+            <Search className="h-4.5 w-4.5" style={{ width: "18px", height: "18px" }} />
           </button>
         </div>
       </form>
@@ -138,11 +140,20 @@ export default async function CertificationsPage({
             <Link
               key={tab.key}
               href={`/dashboard/certifications?filter=${tab.key}${searchQuery ? `&search=${searchQuery}` : ""}`}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-150 ${
                 isActive
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  ? "text-white"
+                  : "hover:text-[#0f172a]"
               }`}
+              style={
+                isActive
+                  ? { backgroundColor: "#2563eb", color: "#fff" }
+                  : {
+                      backgroundColor: "#fff",
+                      border: "1px solid #e2e8f0",
+                      color: "#64748b",
+                    }
+              }
             >
               {tab.label}
             </Link>
@@ -151,95 +162,114 @@ export default async function CertificationsPage({
       </div>
 
       {/* Results count */}
-      <p className="text-sm text-gray-500">
+      <p className="text-sm" style={{ color: "#94a3b8" }}>
         {filtered.length} הסמכות נמצאו
       </p>
 
       {/* Cards grid */}
       {filtered.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
-          <p className="text-gray-500 text-lg">לא נמצאו הסמכות</p>
-          <p className="text-gray-400 text-sm mt-1">
+        <div
+          className="text-center py-16 rounded-xl"
+          style={{
+            backgroundColor: "#fff",
+            border: "1px solid #e2e8f0",
+            boxShadow: "var(--shadow-sm)",
+          }}
+        >
+          <p className="text-lg" style={{ color: "#64748b" }}>
+            לא נמצאו הסמכות
+          </p>
+          <p className="text-sm mt-1" style={{ color: "#94a3b8" }}>
             נסה לשנות את הסינון או להוסיף הסמכה חדשה
           </p>
         </div>
       ) : (
         <>
           {/* Desktop table */}
-          <div className="hidden md:block bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div
+            className="hidden md:block rounded-xl overflow-hidden"
+            style={{
+              backgroundColor: "#fff",
+              border: "1px solid #e2e8f0",
+              boxShadow: "var(--shadow-sm)",
+            }}
+          >
             <table className="w-full">
               <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <tr style={{ backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+                  <th className="text-right px-6 py-3.5 text-sm font-medium" style={{ color: "#64748b" }}>
                     עובד
                   </th>
-                  <th className="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="text-right px-6 py-3.5 text-sm font-medium" style={{ color: "#64748b" }}>
                     סוג הסמכה
                   </th>
-                  <th className="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="text-right px-6 py-3.5 text-sm font-medium" style={{ color: "#64748b" }}>
                     קובץ
                   </th>
-                  <th className="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="text-right px-6 py-3.5 text-sm font-medium" style={{ color: "#64748b" }}>
                     תאריך הנפקה
                   </th>
-                  <th className="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="text-right px-6 py-3.5 text-sm font-medium" style={{ color: "#64748b" }}>
                     תאריך תפוגה
                   </th>
-                  <th className="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="text-right px-6 py-3.5 text-sm font-medium" style={{ color: "#64748b" }}>
                     סטטוס
                   </th>
-                  <th className="text-right px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="text-right px-6 py-3.5 text-sm font-medium" style={{ color: "#64748b" }}>
                     פעולות
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y" style={{ borderColor: "#e2e8f0" }}>
                 {filtered.map((cert: any) => {
                   const sc = statusConfig[cert.status as CertStatus];
                   return (
-                    <tr key={cert.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                    <tr
+                      key={cert.id}
+                      className="transition-colors duration-150"
+                      style={{ cursor: "default" }}
+                      onMouseEnter={undefined}
+                    >
+                      <td className="px-6 py-4 text-sm font-medium" style={{ color: "#0f172a" }}>
                         {cert.employee_name}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
+                      <td className="px-6 py-4 text-sm" style={{ color: "#64748b" }}>
                         {cert.cert_type_name}
                       </td>
                       <td className="px-6 py-4">
                         {cert.image_url ? (
-                          <span className="inline-flex items-center gap-1 text-xs text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
+                          <span className="inline-flex items-center gap-1.5 text-xs bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full font-medium">
                             {cert.image_url.endsWith(".pdf") ? (
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                              </svg>
+                              <FileText className="h-3.5 w-3.5" />
                             ) : (
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                              </svg>
+                              <Image className="h-3.5 w-3.5" />
                             )}
                             מצורף
                           </span>
                         ) : (
-                          <span className="text-xs text-gray-400">—</span>
+                          <span className="text-xs" style={{ color: "#94a3b8" }}>—</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
+                      <td className="px-6 py-4 text-sm" style={{ color: "#64748b" }}>
                         {formatDateHe(cert.issue_date)}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
+                      <td className="px-6 py-4 text-sm" style={{ color: "#64748b" }}>
                         {formatDateHe(cert.expiry_date)}
                       </td>
                       <td className="px-6 py-4">
                         <span
-                          className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${sc.bg} ${sc.text}`}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${sc.bg} ${sc.text}`}
                         >
+                          <span className={`h-1.5 w-1.5 rounded-full ${sc.dot}`} />
                           {sc.label}
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3">
                           <Link
                             href={`/dashboard/certifications/${cert.id}/edit`}
-                            className="text-blue-600 hover:text-blue-800 text-sm"
+                            className="text-sm font-medium transition-colors"
+                            style={{ color: "#2563eb" }}
                           >
                             עריכה
                           </Link>
@@ -265,52 +295,57 @@ export default async function CertificationsPage({
               return (
                 <div
                   key={cert.id}
-                  className="bg-white rounded-xl border border-gray-200 p-4 space-y-3"
+                  className="rounded-xl p-4 space-y-3 transition-colors duration-150"
+                  style={{
+                    backgroundColor: "#fff",
+                    border: "1px solid #e2e8f0",
+                    boxShadow: "var(--shadow-sm)",
+                  }}
                 >
                   <div className="flex items-start justify-between">
                     <div>
-                      <h3 className="font-semibold text-gray-900">
+                      <h3 className="font-semibold" style={{ color: "#0f172a" }}>
                         {cert.employee_name}
                       </h3>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm" style={{ color: "#64748b" }}>
                         {cert.cert_type_name}
                       </p>
                     </div>
                     <span
-                      className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${sc.bg} ${sc.text}`}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${sc.bg} ${sc.text}`}
                     >
+                      <span className={`h-1.5 w-1.5 rounded-full ${sc.dot}`} />
                       {sc.label}
                     </span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>
-                      <span className="text-gray-500">הנפקה: </span>
-                      <span className="text-gray-900">
+                      <span style={{ color: "#94a3b8" }}>הנפקה: </span>
+                      <span style={{ color: "#0f172a" }}>
                         {formatDateHe(cert.issue_date)}
                       </span>
                     </div>
                     <div>
-                      <span className="text-gray-500">תפוגה: </span>
-                      <span className="text-gray-900">
+                      <span style={{ color: "#94a3b8" }}>תפוגה: </span>
+                      <span style={{ color: "#0f172a" }}>
                         {formatDateHe(cert.expiry_date)}
                       </span>
                     </div>
                   </div>
 
                   {cert.image_url && (
-                    <div className="flex items-center gap-1 text-xs text-green-700">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                      </svg>
+                    <div className="flex items-center gap-1.5 text-xs text-emerald-700">
+                      <Paperclip className="h-3.5 w-3.5" />
                       קובץ מצורף
                     </div>
                   )}
 
-                  <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
+                  <div className="flex items-center gap-3 pt-3" style={{ borderTop: "1px solid #f1f5f9" }}>
                     <Link
                       href={`/dashboard/certifications/${cert.id}/edit`}
-                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                      className="text-sm font-medium transition-colors"
+                      style={{ color: "#2563eb" }}
                     >
                       עריכה
                     </Link>
@@ -322,7 +357,8 @@ export default async function CertificationsPage({
                     >
                       <button
                         type="submit"
-                        className="text-red-600 hover:text-red-800 text-sm font-medium"
+                        className="text-sm font-medium transition-colors"
+                        style={{ color: "#dc2626" }}
                       >
                         מחיקה
                       </button>

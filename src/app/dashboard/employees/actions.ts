@@ -89,3 +89,38 @@ export async function deleteEmployee(id: string) {
 
   redirect("/dashboard/employees");
 }
+
+export async function deleteEmployees(ids: string[]): Promise<{ count: number }> {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  if (!ids || ids.length === 0) {
+    throw new Error("No employee IDs provided");
+  }
+
+  let deletedCount = 0;
+  const BATCH_SIZE = 50;
+
+  for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+    const batch = ids.slice(i, i + BATCH_SIZE);
+    const { error } = await supabase
+      .from("employees")
+      .delete()
+      .in("id", batch)
+      .eq("manager_id", user.id);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+    deletedCount += batch.length;
+  }
+
+  return { count: deletedCount };
+}

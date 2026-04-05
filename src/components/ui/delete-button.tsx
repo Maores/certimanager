@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Trash2 } from "lucide-react";
 
 interface DeleteButtonProps {
   action: () => Promise<void>;
@@ -18,11 +19,11 @@ export function DeleteButton({
   if (confirming) {
     return (
       <div className="flex items-center gap-2">
-        <span className="text-xs text-gray-500">בטוח?</span>
+        <span className="text-xs text-muted">בטוח?</span>
         <form action={action} className="flex">
           <button
             type="submit"
-            className="text-xs font-medium text-white bg-red-600 hover:bg-red-700 px-2 py-1 rounded transition-colors"
+            className="text-xs font-medium text-white bg-danger hover:bg-red-700 px-2.5 py-1 rounded-md transition-colors cursor-pointer"
           >
             {confirmLabel}
           </button>
@@ -30,7 +31,7 @@ export function DeleteButton({
         <button
           type="button"
           onClick={() => setConfirming(false)}
-          className="text-xs font-medium text-gray-500 hover:text-gray-700 px-2 py-1 rounded hover:bg-gray-100 transition-colors"
+          className="text-xs font-medium text-muted hover:text-foreground px-2 py-1 rounded-md hover:bg-gray-100 transition-colors cursor-pointer"
         >
           ביטול
         </button>
@@ -42,8 +43,9 @@ export function DeleteButton({
     <button
       type="button"
       onClick={() => setConfirming(true)}
-      className="text-sm font-medium text-red-600 hover:text-red-800 transition-colors"
+      className="inline-flex items-center gap-1 text-sm font-medium text-danger hover:text-red-800 transition-colors cursor-pointer"
     >
+      <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
       {label}
     </button>
   );

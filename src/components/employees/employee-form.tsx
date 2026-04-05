@@ -2,12 +2,16 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Loader2, Save, X } from "lucide-react";
 import type { Employee } from "@/types/database";
 
 interface EmployeeFormProps {
   employee?: Employee;
   action: (formData: FormData) => Promise<void>;
 }
+
+const inputClasses =
+  "w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors";
 
 export function EmployeeForm({ employee, action }: EmployeeFormProps) {
   const router = useRouter();
@@ -29,7 +33,7 @@ export function EmployeeForm({ employee, action }: EmployeeFormProps) {
         <div>
           <label
             htmlFor="first_name"
-            className="mb-1 block text-sm font-medium text-gray-700"
+            className="mb-1.5 block text-sm font-medium text-foreground"
           >
             שם פרטי
           </label>
@@ -39,7 +43,7 @@ export function EmployeeForm({ employee, action }: EmployeeFormProps) {
             name="first_name"
             required
             defaultValue={employee?.first_name ?? ""}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className={inputClasses}
           />
         </div>
 
@@ -47,7 +51,7 @@ export function EmployeeForm({ employee, action }: EmployeeFormProps) {
         <div>
           <label
             htmlFor="last_name"
-            className="mb-1 block text-sm font-medium text-gray-700"
+            className="mb-1.5 block text-sm font-medium text-foreground"
           >
             שם משפחה
           </label>
@@ -57,7 +61,7 @@ export function EmployeeForm({ employee, action }: EmployeeFormProps) {
             name="last_name"
             required
             defaultValue={employee?.last_name ?? ""}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className={inputClasses}
           />
         </div>
       </div>
@@ -66,7 +70,7 @@ export function EmployeeForm({ employee, action }: EmployeeFormProps) {
       <div>
         <label
           htmlFor="employee_number"
-          className="mb-1 block text-sm font-medium text-gray-700"
+          className="mb-1.5 block text-sm font-medium text-foreground"
         >
           מספר עובד
         </label>
@@ -76,7 +80,7 @@ export function EmployeeForm({ employee, action }: EmployeeFormProps) {
           name="employee_number"
           required
           defaultValue={employee?.employee_number ?? ""}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className={inputClasses}
         />
       </div>
 
@@ -85,7 +89,7 @@ export function EmployeeForm({ employee, action }: EmployeeFormProps) {
         <div>
           <label
             htmlFor="department"
-            className="mb-1 block text-sm font-medium text-gray-700"
+            className="mb-1.5 block text-sm font-medium text-foreground"
           >
             מחלקה
           </label>
@@ -94,7 +98,7 @@ export function EmployeeForm({ employee, action }: EmployeeFormProps) {
             id="department"
             name="department"
             defaultValue={employee?.department ?? ""}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className={inputClasses}
           />
         </div>
 
@@ -102,7 +106,7 @@ export function EmployeeForm({ employee, action }: EmployeeFormProps) {
         <div>
           <label
             htmlFor="status"
-            className="mb-1 block text-sm font-medium text-gray-700"
+            className="mb-1.5 block text-sm font-medium text-foreground"
           >
             סטטוס
           </label>
@@ -110,10 +114,10 @@ export function EmployeeForm({ employee, action }: EmployeeFormProps) {
             id="status"
             name="status"
             defaultValue={employee?.status ?? "פעיל"}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className={inputClasses}
           >
             <option value="פעיל">פעיל</option>
-            <option value="חלת">חלת</option>
+            <option value="חלת">חל&quot;ת</option>
             <option value="מחלה">מחלה</option>
             <option value="לא פעיל">לא פעיל</option>
           </select>
@@ -125,7 +129,7 @@ export function EmployeeForm({ employee, action }: EmployeeFormProps) {
         <div>
           <label
             htmlFor="phone"
-            className="mb-1 block text-sm font-medium text-gray-700"
+            className="mb-1.5 block text-sm font-medium text-foreground"
           >
             טלפון
           </label>
@@ -135,7 +139,7 @@ export function EmployeeForm({ employee, action }: EmployeeFormProps) {
             name="phone"
             dir="ltr"
             defaultValue={employee?.phone ?? ""}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 text-left focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className={`${inputClasses} text-left`}
           />
         </div>
 
@@ -143,7 +147,7 @@ export function EmployeeForm({ employee, action }: EmployeeFormProps) {
         <div>
           <label
             htmlFor="email"
-            className="mb-1 block text-sm font-medium text-gray-700"
+            className="mb-1.5 block text-sm font-medium text-foreground"
           >
             אימייל
           </label>
@@ -153,7 +157,7 @@ export function EmployeeForm({ employee, action }: EmployeeFormProps) {
             name="email"
             dir="ltr"
             defaultValue={employee?.email ?? ""}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 text-left focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className={`${inputClasses} text-left`}
           />
         </div>
       </div>
@@ -162,7 +166,7 @@ export function EmployeeForm({ employee, action }: EmployeeFormProps) {
       <div>
         <label
           htmlFor="notes"
-          className="mb-1 block text-sm font-medium text-gray-700"
+          className="mb-1.5 block text-sm font-medium text-foreground"
         >
           הערות
         </label>
@@ -171,7 +175,7 @@ export function EmployeeForm({ employee, action }: EmployeeFormProps) {
           name="notes"
           rows={3}
           defaultValue={employee?.notes ?? ""}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className={`${inputClasses} resize-none`}
         />
       </div>
 
@@ -180,41 +184,27 @@ export function EmployeeForm({ employee, action }: EmployeeFormProps) {
         <button
           type="submit"
           disabled={loading}
-          className="inline-flex items-center rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
+          className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary/20 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-colors cursor-pointer"
+          style={{ boxShadow: "var(--shadow-sm)" }}
         >
           {loading ? (
             <>
-              <svg
-                className="ml-2 h-4 w-4 animate-spin"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                />
-              </svg>
+              <Loader2 className="h-4 w-4 animate-spin" />
               שומר...
             </>
           ) : (
-            "שמור"
+            <>
+              <Save className="h-4 w-4" strokeWidth={1.75} />
+              שמור
+            </>
           )}
         </button>
         <button
           type="button"
           onClick={() => router.back()}
-          className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
+          className="inline-flex items-center gap-2 rounded-lg border border-border bg-white px-5 py-2.5 text-sm font-medium text-muted hover:bg-gray-50 hover:text-foreground transition-colors cursor-pointer"
         >
+          <X className="h-4 w-4" strokeWidth={1.75} />
           ביטול
         </button>
       </div>
