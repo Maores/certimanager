@@ -5,6 +5,7 @@ import Link from "next/link";
 import { deleteCertification } from "./actions";
 import { DeleteButton } from "@/components/ui/delete-button";
 import { Search, Plus, Paperclip, FileText, Image } from "lucide-react";
+import { AutoSubmitSelect } from "@/components/ui/auto-submit-select";
 
 const statusConfig: Record<
   CertStatus,
@@ -33,13 +34,27 @@ const filterTabs: { key: FilterTab; label: string }[] = [
 export default async function CertificationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ filter?: string; search?: string }>;
+  searchParams: Promise<{ filter?: string; search?: string; dept?: string; type?: string }>;
 }) {
   const params = await searchParams;
   const currentFilter = (params.filter || "all") as FilterTab;
   const searchQuery = params.search || "";
+  const deptFilter = params.dept || "";
+  const typeFilter = params.type || "";
 
   const supabase = await createClient();
+
+  // Fetch cert types and departments for filters
+  const [{ data: certTypes }, { data: deptData }] = await Promise.all([
+    supabase.from("cert_types").select("id, name").order("name"),
+    supabase.from("employees").select("department").order("department"),
+  ]);
+
+  const departments = [
+    ...new Set(
+      (deptData || []).map((e) => e.department).filter(Boolean)
+    ),
+  ];
 
   const { data: certifications, error } = await supabase
     .from("certifications")
@@ -52,7 +67,8 @@ export default async function CertificationsPage({
       notes,
       created_at,
       updated_at,
-      employees ( id, first_name, last_name ),
+      cert_type_id,
+      employees ( id, first_name, last_name, department ),
       cert_types ( id, name )
     `
     )
@@ -72,6 +88,7 @@ export default async function CertificationsPage({
     employee_name: cert.employees
       ? `${cert.employees.first_name} ${cert.employees.last_name}`
       : "לא ידוע",
+    employee_department: cert.employees?.department || "",
     cert_type_name: cert.cert_types?.name || "לא ידוע",
     status: getCertStatus(cert.expiry_date),
   }));
@@ -81,8 +98,13 @@ export default async function CertificationsPage({
       currentFilter === "all" || cert.status === currentFilter;
     const matchesSearch =
       !searchQuery ||
-      cert.employee_name.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesFilter && matchesSearch;
+      cert.employee_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      cert.cert_type_name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesDept =
+      !deptFilter || cert.employee_department === deptFilter;
+    const matchesType =
+      !typeFilter || cert.cert_type_id === typeFilter;
+    return matchesFilter && matchesSearch && matchesDept && matchesType;
   });
 
   return (
@@ -107,29 +129,46 @@ export default async function CertificationsPage({
         </Link>
       </div>
 
-      {/* Search */}
-      <form className="max-w-md">
-        <div className="relative">
+      {/* Search + filters */}
+      <form className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
           <input
             type="text"
             name="search"
             defaultValue={searchQuery}
-            placeholder="חיפוש לפי שם עובד..."
-            className="w-full pr-4 pl-10 py-2.5 rounded-lg text-sm transition-colors"
-            style={{
-              border: "1px solid #e2e8f0",
-              outline: "none",
-            }}
+            placeholder="חיפוש לפי שם עובד או הסמכה..."
+            className="w-full pr-4 pl-10 py-2.5 rounded-lg text-sm border border-border bg-white text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary-ring"
           />
           <input type="hidden" name="filter" value={currentFilter} />
+          {deptFilter && <input type="hidden" name="dept" value={deptFilter} />}
+          {typeFilter && <input type="hidden" name="type" value={typeFilter} />}
           <button
             type="submit"
-            className="absolute left-3 top-1/2 -translate-y-1/2 rounded p-0.5 transition-colors"
-            style={{ color: "#94a3b8" }}
+            className="absolute left-3 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground transition-colors cursor-pointer"
           >
             <Search className="h-4.5 w-4.5" style={{ width: "18px", height: "18px" }} />
           </button>
         </div>
+        <AutoSubmitSelect
+          name="dept"
+          defaultValue={deptFilter}
+          className="rounded-lg border border-border bg-white px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-ring cursor-pointer sm:w-44"
+        >
+          <option value="">כל המחלקות</option>
+          {departments.map((d) => (
+            <option key={d} value={d}>{d}</option>
+          ))}
+        </AutoSubmitSelect>
+        <AutoSubmitSelect
+          name="type"
+          defaultValue={typeFilter}
+          className="rounded-lg border border-border bg-white px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-ring cursor-pointer sm:w-44"
+        >
+          <option value="">כל סוגי ההסמכה</option>
+          {(certTypes || []).map((ct: any) => (
+            <option key={ct.id} value={ct.id}>{ct.name}</option>
+          ))}
+        </AutoSubmitSelect>
       </form>
 
       {/* Filter tabs */}
@@ -139,7 +178,7 @@ export default async function CertificationsPage({
           return (
             <Link
               key={tab.key}
-              href={`/dashboard/certifications?filter=${tab.key}${searchQuery ? `&search=${searchQuery}` : ""}`}
+              href={`/dashboard/certifications?filter=${tab.key}${searchQuery ? `&search=${searchQuery}` : ""}${deptFilter ? `&dept=${deptFilter}` : ""}${typeFilter ? `&type=${typeFilter}` : ""}`}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-150 ${
                 isActive
                   ? "text-white"

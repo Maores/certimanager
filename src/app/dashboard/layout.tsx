@@ -10,6 +10,7 @@ const navItems: NavItem[] = [
   { label: "הסמכות", href: "/dashboard/certifications", icon: "certifications" },
   { label: "סוגי הסמכות", href: "/dashboard/cert-types", icon: "cert-types" },
   { label: "ייבוא", href: "/dashboard/import", icon: "import" },
+  { label: "דוחות", href: "/dashboard/reports", icon: "reports" },
 ];
 
 export default async function DashboardLayout({

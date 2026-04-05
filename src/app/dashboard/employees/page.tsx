@@ -3,14 +3,28 @@ import { createClient } from "@/lib/supabase/server";
 import type { Employee } from "@/types/database";
 import { Search, UserPlus, Users } from "lucide-react";
 import { EmployeeListClient } from "@/components/employees/employee-list-client";
+import { AutoSubmitSelect } from "@/components/ui/auto-submit-select";
 
 export default async function EmployeesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; dept?: string }>;
 }) {
-  const { q } = await searchParams;
+  const { q, dept } = await searchParams;
   const supabase = await createClient();
+
+  // Fetch distinct departments for the filter
+  const { data: allEmployees } = await supabase
+    .from("employees")
+    .select("department")
+    .order("department");
+  const departments = [
+    ...new Set(
+      (allEmployees || [])
+        .map((e) => e.department)
+        .filter(Boolean)
+    ),
+  ];
 
   let query = supabase.from("employees").select("*").order("first_name");
 
@@ -18,6 +32,10 @@ export default async function EmployeesPage({
     query = query.or(
       `first_name.ilike.%${q}%,last_name.ilike.%${q}%,employee_number.ilike.%${q}%,department.ilike.%${q}%`
     );
+  }
+
+  if (dept) {
+    query = query.eq("department", dept);
   }
 
   const { data: employees } = await query;
@@ -36,9 +54,9 @@ export default async function EmployeesPage({
         </Link>
       </div>
 
-      {/* Search bar */}
-      <form method="GET" className="w-full">
-        <div className="relative">
+      {/* Search + department filter */}
+      <form method="GET" className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
           <input
             type="text"
             name="q"
@@ -53,6 +71,18 @@ export default async function EmployeesPage({
             <Search className="h-5 w-5" />
           </button>
         </div>
+        <AutoSubmitSelect
+          name="dept"
+          defaultValue={dept ?? ""}
+          className="rounded-lg border border-border bg-white px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-ring cursor-pointer sm:w-48"
+        >
+          <option value="">כל המחלקות</option>
+          {departments.map((d) => (
+            <option key={d} value={d}>
+              {d}
+            </option>
+          ))}
+        </AutoSubmitSelect>
       </form>
 
       {!employees || employees.length === 0 ? (
