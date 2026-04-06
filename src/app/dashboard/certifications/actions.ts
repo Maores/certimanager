@@ -35,6 +35,9 @@ export async function createCertification(formData: FormData) {
 
   const supabase = await createClient();
 
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
   const employee_id = formData.get("employee_id") as string;
   const cert_type_id = formData.get("cert_type_id") as string;
   const issue_date = formData.get("issue_date") as string;

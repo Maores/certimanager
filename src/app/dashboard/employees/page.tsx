@@ -40,8 +40,11 @@ export default async function EmployeesPage({
     let query = supabase.from("employees").select("*").order("first_name");
 
     if (q) {
+      // Escape PostgREST special characters to prevent parse errors.
+      // Order matters: backslash must be escaped first.
+      const safeQ = q.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_").replace(/,/g, "\\,");
       query = query.or(
-        `first_name.ilike.%${q}%,last_name.ilike.%${q}%,employee_number.ilike.%${q}%,department.ilike.%${q}%`
+        `first_name.ilike.%${safeQ}%,last_name.ilike.%${safeQ}%,employee_number.ilike.%${safeQ}%,department.ilike.%${safeQ}%`
       );
     }
 
