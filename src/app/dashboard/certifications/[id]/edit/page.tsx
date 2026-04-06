@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getGuestSessionId } from "@/lib/guest-session";
+import { guestGetEmployees, guestGetCertTypes, getGuestData } from "@/lib/guest-store";
 import CertificationForm from "@/components/certifications/certification-form";
 import Link from "next/link";
 
@@ -9,27 +11,45 @@ export default async function EditCertificationPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
+  const guestSid = await getGuestSessionId();
 
-  const { data: certification } = await supabase
-    .from("certifications")
-    .select("*")
-    .eq("id", id)
-    .single();
+  let certification: any;
+  let employees: any[];
+  let certTypesData: any[];
+
+  if (guestSid) {
+    const data = getGuestData(guestSid);
+    certification = data.certifications.find((c) => c.id === id) || null;
+    employees = guestGetEmployees(guestSid);
+    certTypesData = guestGetCertTypes(guestSid);
+  } else {
+    const supabase = await createClient();
+
+    const { data: certData } = await supabase
+      .from("certifications")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    certification = certData;
+
+    const { data: empData } = await supabase
+      .from("employees")
+      .select("*")
+      .order("first_name");
+
+    const { data: ctData } = await supabase
+      .from("cert_types")
+      .select("*")
+      .order("name");
+
+    employees = empData || [];
+    certTypesData = ctData || [];
+  }
 
   if (!certification) {
     notFound();
   }
-
-  const { data: employees } = await supabase
-    .from("employees")
-    .select("*")
-    .order("first_name");
-
-  const { data: certTypes } = await supabase
-    .from("cert_types")
-    .select("*")
-    .order("name");
 
   return (
     <div className="max-w-2xl">
@@ -44,8 +64,8 @@ export default async function EditCertificationPage({
       </h1>
       <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
         <CertificationForm
-          employees={employees || []}
-          certTypes={certTypes || []}
+          employees={employees}
+          certTypes={certTypesData}
           certification={certification}
         />
       </div>

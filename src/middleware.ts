@@ -1,7 +1,23 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+const GUEST_COOKIE = "guest_session";
+
 export async function middleware(request: NextRequest) {
+  // Guest sessions bypass Supabase auth entirely
+  const isGuest = request.cookies.has(GUEST_COOKIE);
+
+  if (isGuest) {
+    // Guest trying to access login → redirect to dashboard
+    if (request.nextUrl.pathname.startsWith("/login")) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/dashboard";
+      return NextResponse.redirect(url);
+    }
+    // Guest accessing dashboard or other pages → allow through
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(

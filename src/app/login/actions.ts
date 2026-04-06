@@ -2,6 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createGuestSession, clearGuestSessionCookie, getGuestSessionId } from "@/lib/guest-session";
+import { clearGuestSession } from "@/lib/guest-store";
 
 export async function login(formData: FormData) {
   const supabase = await createClient();
@@ -21,7 +23,21 @@ export async function login(formData: FormData) {
   redirect("/dashboard");
 }
 
+export async function guestLogin() {
+  await createGuestSession();
+  redirect("/dashboard");
+}
+
 export async function logout() {
+  // Clear guest session if exists
+  const guestSid = await getGuestSessionId();
+  if (guestSid) {
+    clearGuestSession(guestSid);
+    await clearGuestSessionCookie();
+    redirect("/login");
+  }
+
+  // Regular Supabase logout
   const supabase = await createClient();
   await supabase.auth.signOut();
   redirect("/login");

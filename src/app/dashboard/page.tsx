@@ -1,4 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
+import { getGuestSessionId } from "@/lib/guest-session";
+import { guestGetEmployeeCount, getGuestData } from "@/lib/guest-store";
 import { getCertStatus, formatDateHe } from "@/types/database";
 import Link from "next/link";
 import { Users, CheckCircle, AlertTriangle, XCircle } from "lucide-react";
@@ -35,19 +37,35 @@ const colorMap: Record<
 };
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
+  const guestSid = await getGuestSessionId();
 
-  // Fetch real counts
-  const { count: employeeCount } = await supabase
-    .from("employees")
-    .select("*", { count: "exact", head: true });
+  let employeeCountVal: number;
+  let certs: any[];
 
-  const { data: allCerts } = await supabase
-    .from("certifications")
-    .select("id, expiry_date, employee_id, cert_type_id, employees(first_name, last_name), cert_types(name)")
-    .order("expiry_date", { ascending: true });
-
-  const certs = allCerts || [];
+  if (guestSid) {
+    employeeCountVal = guestGetEmployeeCount(guestSid);
+    const data = getGuestData(guestSid);
+    certs = data.certifications.map((cert: any) => {
+      const emp = data.employees.find((e: any) => e.id === cert.employee_id);
+      const ct = data.certTypes.find((t: any) => t.id === cert.cert_type_id);
+      return {
+        ...cert,
+        employees: emp ? { first_name: emp.first_name, last_name: emp.last_name } : null,
+        cert_types: ct ? { name: ct.name } : null,
+      };
+    }).sort((a: any, b: any) => (a.expiry_date || "").localeCompare(b.expiry_date || ""));
+  } else {
+    const supabase = await createClient();
+    const { count } = await supabase
+      .from("employees")
+      .select("*", { count: "exact", head: true });
+    employeeCountVal = count || 0;
+    const { data: allCerts } = await supabase
+      .from("certifications")
+      .select("id, expiry_date, employee_id, cert_type_id, employees(first_name, last_name), cert_types(name)")
+      .order("expiry_date", { ascending: true });
+    certs = allCerts || [];
+  }
   let validCount = 0;
   let expiringSoonCount = 0;
   let expiredCount = 0;
@@ -72,7 +90,7 @@ export default async function DashboardPage() {
   }
 
   const stats = [
-    { label: "סה\"כ עובדים", value: employeeCount || 0, color: "blue" },
+    { label: "סה\"כ עובדים", value: employeeCountVal, color: "blue" },
     { label: "הסמכות בתוקף", value: validCount, color: "green" },
     { label: "פג תוקף בקרוב", value: expiringSoonCount, color: "yellow" },
     { label: "פג תוקף", value: expiredCount, color: "red" },

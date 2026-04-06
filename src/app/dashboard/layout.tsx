@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { logout } from "@/app/login/actions";
+import { isGuestSession } from "@/lib/guest-session";
 import Sidebar, { NavItem } from "@/components/layout/sidebar";
 import { LogOut } from "lucide-react";
 
@@ -18,13 +19,19 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const guest = await isGuestSession();
+  let userEmail = "אורח";
 
-  if (!user) {
-    redirect("/login");
+  if (!guest) {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      redirect("/login");
+    }
+    userEmail = user.email || "משתמש";
   }
 
   return (
@@ -40,8 +47,13 @@ export default async function DashboardLayout({
           <div className="hidden md:block" />
 
           <div className="flex items-center gap-3">
+            {guest && (
+              <span className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full hidden sm:inline">
+                מצב אורח
+              </span>
+            )}
             <span className="text-sm text-muted hidden sm:inline">
-              {user.email}
+              {userEmail}
             </span>
             <form action={logout}>
               <button

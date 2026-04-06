@@ -1,4 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
+import { getGuestSessionId } from "@/lib/guest-session";
+import { getGuestData } from "@/lib/guest-store";
 import { getCertStatus } from "@/types/database";
 import {
   Users,
@@ -13,26 +15,47 @@ import {
 } from "lucide-react";
 
 export default async function ReportsPage() {
-  const supabase = await createClient();
+  const guestSid = await getGuestSessionId();
 
-  // Fetch all data in parallel
-  const [
-    { data: employees },
-    { data: certifications },
-    { data: certTypes },
-  ] = await Promise.all([
-    supabase.from("employees").select("id, first_name, last_name, department"),
-    supabase
-      .from("certifications")
-      .select(
-        "id, expiry_date, cert_type_id, employee_id, employees(first_name, last_name, department), cert_types(name)"
-      )
-      .order("expiry_date", { ascending: true }),
-    supabase.from("cert_types").select("id, name"),
-  ]);
+  let allEmployees: any[];
+  let allCertsRaw: any[];
+  let allCertTypes: any[];
 
-  const allEmployees = employees || [];
-  const allCerts = (certifications || []).map((c: any) => ({
+  if (guestSid) {
+    const data = getGuestData(guestSid);
+    allEmployees = data.employees;
+    allCertTypes = data.certTypes;
+    allCertsRaw = data.certifications.map((cert: any) => {
+      const emp = data.employees.find((e: any) => e.id === cert.employee_id);
+      const ct = data.certTypes.find((t: any) => t.id === cert.cert_type_id);
+      return {
+        ...cert,
+        employees: emp ? { first_name: emp.first_name, last_name: emp.last_name, department: emp.department } : null,
+        cert_types: ct ? { name: ct.name } : null,
+      };
+    }).sort((a: any, b: any) => (a.expiry_date || "").localeCompare(b.expiry_date || ""));
+  } else {
+    const supabase = await createClient();
+    const [
+      { data: employees },
+      { data: certifications },
+      { data: certTypes },
+    ] = await Promise.all([
+      supabase.from("employees").select("id, first_name, last_name, department"),
+      supabase
+        .from("certifications")
+        .select(
+          "id, expiry_date, cert_type_id, employee_id, employees(first_name, last_name, department), cert_types(name)"
+        )
+        .order("expiry_date", { ascending: true }),
+      supabase.from("cert_types").select("id, name"),
+    ]);
+    allEmployees = employees || [];
+    allCertsRaw = certifications || [];
+    allCertTypes = certTypes || [];
+  }
+
+  const allCerts = (allCertsRaw).map((c: any) => ({
     ...c,
     status: getCertStatus(c.expiry_date),
     employee_name: c.employees
@@ -41,7 +64,6 @@ export default async function ReportsPage() {
     employee_dept: c.employees?.department || "ללא מחלקה",
     cert_type_name: c.cert_types?.name || "לא ידוע",
   }));
-  const allCertTypes = certTypes || [];
 
   // ── Compliance overview ──
   const totalEmployees = allEmployees.length;

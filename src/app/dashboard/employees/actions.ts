@@ -2,8 +2,30 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { getGuestSessionId } from "@/lib/guest-session";
+import {
+  guestCreateEmployee,
+  guestUpdateEmployee,
+  guestDeleteEmployee,
+  guestDeleteEmployees,
+} from "@/lib/guest-store";
 
 export async function createEmployee(formData: FormData) {
+  const guestSid = await getGuestSessionId();
+  if (guestSid) {
+    guestCreateEmployee(guestSid, {
+      first_name: formData.get("first_name") as string,
+      last_name: formData.get("last_name") as string,
+      employee_number: formData.get("employee_number") as string,
+      department: formData.get("department") as string,
+      phone: formData.get("phone") as string,
+      email: formData.get("email") as string,
+      status: (formData.get("status") as string) || "פעיל",
+      notes: (formData.get("notes") as string) || null,
+    });
+    redirect("/dashboard/employees");
+  }
+
   const supabase = await createClient();
 
   const {
@@ -34,6 +56,24 @@ export async function createEmployee(formData: FormData) {
 }
 
 export async function updateEmployee(id: string, formData: FormData) {
+  const guestSid = await getGuestSessionId();
+  if (guestSid) {
+    const ok = guestUpdateEmployee(guestSid, id, {
+      first_name: formData.get("first_name") as string,
+      last_name: formData.get("last_name") as string,
+      employee_number: formData.get("employee_number") as string,
+      department: formData.get("department") as string,
+      phone: formData.get("phone") as string,
+      email: formData.get("email") as string,
+      status: (formData.get("status") as string) || "פעיל",
+      notes: (formData.get("notes") as string) || null,
+    });
+    if (!ok) {
+      throw new Error("Employee not found");
+    }
+    redirect("/dashboard/employees");
+  }
+
   const supabase = await createClient();
 
   const {
@@ -67,6 +107,15 @@ export async function updateEmployee(id: string, formData: FormData) {
 }
 
 export async function deleteEmployee(id: string) {
+  const guestSid = await getGuestSessionId();
+  if (guestSid) {
+    const ok = guestDeleteEmployee(guestSid, id);
+    if (!ok) {
+      throw new Error("Employee not found");
+    }
+    redirect("/dashboard/employees");
+  }
+
   const supabase = await createClient();
 
   const {
@@ -91,6 +140,15 @@ export async function deleteEmployee(id: string) {
 }
 
 export async function deleteEmployees(ids: string[]): Promise<{ count: number }> {
+  const guestSid = await getGuestSessionId();
+  if (guestSid) {
+    if (!ids || ids.length === 0) {
+      throw new Error("No employee IDs provided");
+    }
+    const count = guestDeleteEmployees(guestSid, ids);
+    return { count };
+  }
+
   const supabase = await createClient();
 
   const {

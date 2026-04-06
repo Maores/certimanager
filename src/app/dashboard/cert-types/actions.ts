@@ -2,8 +2,32 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { getGuestSessionId } from "@/lib/guest-session";
+import {
+  guestCreateCertType,
+  guestUpdateCertType,
+  guestDeleteCertType,
+} from "@/lib/guest-store";
 
 export async function createCertType(formData: FormData) {
+  const guestSid = await getGuestSessionId();
+  if (guestSid) {
+    const name = formData.get("name") as string;
+    const default_validity_months = parseInt(
+      formData.get("default_validity_months") as string,
+      10
+    );
+    const description = formData.get("description") as string | null;
+
+    guestCreateCertType(guestSid, {
+      name,
+      default_validity_months,
+      description: description || null,
+    });
+    revalidatePath("/dashboard/cert-types");
+    return;
+  }
+
   const supabase = await createClient();
 
   const {
@@ -34,6 +58,25 @@ export async function createCertType(formData: FormData) {
 }
 
 export async function updateCertType(id: string, formData: FormData) {
+  const guestSid = await getGuestSessionId();
+  if (guestSid) {
+    const name = formData.get("name") as string;
+    const default_validity_months = parseInt(
+      formData.get("default_validity_months") as string,
+      10
+    );
+    const description = formData.get("description") as string | null;
+
+    const success = guestUpdateCertType(guestSid, id, {
+      name,
+      default_validity_months,
+      description: description || null,
+    });
+    if (!success) throw new Error("Failed to update cert type in guest store");
+    revalidatePath("/dashboard/cert-types");
+    return;
+  }
+
   const supabase = await createClient();
 
   const {
@@ -67,6 +110,14 @@ export async function updateCertType(id: string, formData: FormData) {
 }
 
 export async function deleteCertType(id: string) {
+  const guestSid = await getGuestSessionId();
+  if (guestSid) {
+    const success = guestDeleteCertType(guestSid, id);
+    if (!success) throw new Error("Failed to delete cert type in guest store");
+    revalidatePath("/dashboard/cert-types");
+    return;
+  }
+
   const supabase = await createClient();
 
   const {

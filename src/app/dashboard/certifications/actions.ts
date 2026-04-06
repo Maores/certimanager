@@ -3,8 +3,36 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getGuestSessionId } from "@/lib/guest-session";
+import {
+  guestCreateCertification,
+  guestUpdateCertification,
+  guestDeleteCertification,
+} from "@/lib/guest-store";
 
 export async function createCertification(formData: FormData) {
+  const guestSid = await getGuestSessionId();
+  if (guestSid) {
+    const employee_id = formData.get("employee_id") as string;
+    const cert_type_id = formData.get("cert_type_id") as string;
+    const issue_date = formData.get("issue_date") as string;
+    const expiry_date = formData.get("expiry_date") as string;
+    const image_url = formData.get("image_url") as string | null;
+    const notes = formData.get("notes") as string | null;
+
+    await guestCreateCertification(guestSid, {
+      employee_id,
+      cert_type_id,
+      issue_date: issue_date || null,
+      expiry_date: expiry_date || null,
+      image_url: image_url || null,
+      notes: notes || null,
+    });
+
+    revalidatePath("/dashboard/certifications");
+    redirect("/dashboard/certifications");
+  }
+
   const supabase = await createClient();
 
   const employee_id = formData.get("employee_id") as string;
@@ -32,6 +60,32 @@ export async function createCertification(formData: FormData) {
 }
 
 export async function updateCertification(id: string, formData: FormData) {
+  const guestSid = await getGuestSessionId();
+  if (guestSid) {
+    const employee_id = formData.get("employee_id") as string;
+    const cert_type_id = formData.get("cert_type_id") as string;
+    const issue_date = formData.get("issue_date") as string;
+    const expiry_date = formData.get("expiry_date") as string;
+    const image_url = formData.get("image_url") as string | null;
+    const notes = formData.get("notes") as string | null;
+
+    const success = await guestUpdateCertification(guestSid, id, {
+      employee_id,
+      cert_type_id,
+      issue_date: issue_date || null,
+      expiry_date: expiry_date || null,
+      image_url: image_url || null,
+      notes: notes || null,
+    });
+
+    if (!success) {
+      throw new Error("Failed to update certification in guest mode");
+    }
+
+    revalidatePath("/dashboard/certifications");
+    redirect("/dashboard/certifications");
+  }
+
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -75,6 +129,16 @@ export async function updateCertification(id: string, formData: FormData) {
 }
 
 export async function deleteCertification(id: string) {
+  const guestSid = await getGuestSessionId();
+  if (guestSid) {
+    const success = await guestDeleteCertification(guestSid, id);
+    if (!success) {
+      throw new Error("Failed to delete certification in guest mode");
+    }
+    revalidatePath("/dashboard/certifications");
+    return;
+  }
+
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -112,6 +176,11 @@ const ALLOWED_TYPES = [
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 export async function uploadCertImage(formData: FormData) {
+  const guestSid = await getGuestSessionId();
+  if (guestSid) {
+    throw new Error("העלאת קבצים לא זמינה במצב אורח");
+  }
+
   const supabase = await createClient();
 
   const file = formData.get("file") as File;
@@ -146,6 +215,11 @@ export async function uploadCertImage(formData: FormData) {
 export async function getSignedUrl(filePath: string) {
   if (!filePath) return null;
 
+  const guestSid = await getGuestSessionId();
+  if (guestSid) {
+    return null;
+  }
+
   const supabase = await createClient();
 
   const { data, error } = await supabase.storage
@@ -158,6 +232,11 @@ export async function getSignedUrl(filePath: string) {
 
 export async function deleteCertImage(filePath: string) {
   if (!filePath) return;
+
+  const guestSid = await getGuestSessionId();
+  if (guestSid) {
+    return;
+  }
 
   const supabase = await createClient();
 

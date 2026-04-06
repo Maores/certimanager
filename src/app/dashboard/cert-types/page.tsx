@@ -2,14 +2,26 @@ import { createClient } from "@/lib/supabase/server";
 import { createCertType, deleteCertType } from "./actions";
 import { DeleteButton } from "@/components/ui/delete-button";
 import { Plus, Tag, Clock } from "lucide-react";
+import { getGuestSessionId } from "@/lib/guest-session";
+import { guestGetCertTypes } from "@/lib/guest-store";
 
 export default async function CertTypesPage() {
-  const supabase = await createClient();
+  const guestSid = await getGuestSessionId();
 
-  const { data: certTypes, error } = await supabase
-    .from("cert_types")
-    .select("*")
-    .order("name", { ascending: true });
+  let certTypes: any[] | null;
+  let error: any = null;
+
+  if (guestSid) {
+    certTypes = guestGetCertTypes(guestSid);
+  } else {
+    const supabase = await createClient();
+    const result = await supabase
+      .from("cert_types")
+      .select("*")
+      .order("name", { ascending: true });
+    certTypes = result.data;
+    error = result.error;
+  }
 
   if (error) {
     return (

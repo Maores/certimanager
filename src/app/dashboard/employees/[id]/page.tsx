@@ -7,6 +7,8 @@ import { DeleteEmployeeButton } from "./delete-button";
 import { getSignedUrl } from "@/app/dashboard/certifications/actions";
 import { CertFileViewer } from "./cert-file-viewer";
 import { ArrowRight, Pencil, Plus } from "lucide-react";
+import { getGuestSessionId } from "@/lib/guest-session";
+import { guestGetEmployee, guestGetCertsByEmployee } from "@/lib/guest-store";
 
 export default async function EmployeeDetailPage({
   params,
@@ -14,38 +16,52 @@ export default async function EmployeeDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
+  const guestSid = await getGuestSessionId();
 
-  const { data: employee } = await supabase
-    .from("employees")
-    .select("*")
-    .eq("id", id)
-    .single();
+  let employee: Employee | null;
+  let certifications: any[] | null;
 
-  if (!employee) {
-    notFound();
+  if (guestSid) {
+    employee = guestGetEmployee(guestSid, id);
+    if (!employee) { notFound(); }
+    certifications = guestGetCertsByEmployee(guestSid, id);
+  } else {
+    const supabase = await createClient();
+
+    const { data: empData } = await supabase
+      .from("employees")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    employee = empData as Employee | null;
+    if (!employee) { notFound(); }
+
+    const { data: certData } = await supabase
+      .from("certifications")
+      .select("*, cert_types(name)")
+      .eq("employee_id", id)
+      .order("expiry_date", { ascending: true });
+
+    certifications = certData;
   }
-
-  const { data: certifications } = await supabase
-    .from("certifications")
-    .select("*, cert_types(name)")
-    .eq("employee_id", id)
-    .order("expiry_date", { ascending: true });
 
   const emp = employee as Employee;
 
-  // Generate signed URLs for certs with files
-  const certsWithUrls = await Promise.all(
-    ((certifications || []) as (Certification & { cert_types: { name: string } })[]).map(
-      async (cert) => {
-        let signedUrl: string | null = null;
-        if (cert.image_url) {
-          signedUrl = await getSignedUrl(cert.image_url);
-        }
-        return { ...cert, signedUrl };
-      }
-    )
-  );
+  // Generate signed URLs for certs with files (skip for guest mode)
+  const certsWithUrls = guestSid
+    ? ((certifications || []) as any[]).map((cert) => ({ ...cert, signedUrl: null }))
+    : await Promise.all(
+        ((certifications || []) as (Certification & { cert_types: { name: string } })[]).map(
+          async (cert) => {
+            let signedUrl: string | null = null;
+            if (cert.image_url) {
+              signedUrl = await getSignedUrl(cert.image_url);
+            }
+            return { ...cert, signedUrl };
+          }
+        )
+      );
 
   const statusConfig = {
     valid: {

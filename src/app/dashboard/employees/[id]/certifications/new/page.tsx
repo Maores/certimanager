@@ -1,4 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
+import { getGuestSessionId } from "@/lib/guest-session";
+import { guestGetEmployee, guestGetCertTypes, guestGetCertsByEmployee } from "@/lib/guest-store";
 import { notFound } from "next/navigation";
 import CertificationForm from "@/components/certifications/certification-form";
 
@@ -8,27 +10,51 @@ export default async function NewCertificationForEmployeePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
+  const guestSid = await getGuestSessionId();
 
-  const { data: employee } = await supabase
-    .from("employees")
-    .select("*")
-    .eq("id", id)
-    .single();
+  let employee: any;
+  let certTypesData: any[];
+  let existingCerts: any[];
 
-  if (!employee) {
-    notFound();
+  if (guestSid) {
+    employee = guestGetEmployee(guestSid, id);
+    if (!employee) {
+      notFound();
+    }
+    certTypesData = guestGetCertTypes(guestSid);
+    existingCerts = guestGetCertsByEmployee(guestSid, id).map((c) => ({
+      employee_id: c.employee_id,
+      cert_type_id: c.cert_type_id,
+      expiry_date: c.expiry_date,
+    }));
+  } else {
+    const supabase = await createClient();
+
+    const { data: empData } = await supabase
+      .from("employees")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    employee = empData;
+
+    if (!employee) {
+      notFound();
+    }
+
+    const { data: ctData } = await supabase
+      .from("cert_types")
+      .select("*")
+      .order("name");
+
+    const { data: ecData } = await supabase
+      .from("certifications")
+      .select("employee_id, cert_type_id, expiry_date")
+      .eq("employee_id", id);
+
+    certTypesData = ctData || [];
+    existingCerts = ecData || [];
   }
-
-  const { data: certTypes } = await supabase
-    .from("cert_types")
-    .select("*")
-    .order("name");
-
-  const { data: existingCerts } = await supabase
-    .from("certifications")
-    .select("employee_id, cert_type_id, expiry_date")
-    .eq("employee_id", id);
 
   return (
     <div className="max-w-2xl">
@@ -42,9 +68,9 @@ export default async function NewCertificationForEmployeePage({
       <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
         <CertificationForm
           employees={[employee]}
-          certTypes={certTypes || []}
+          certTypes={certTypesData}
           defaultEmployeeId={id}
-          existingCerts={existingCerts || []}
+          existingCerts={existingCerts}
         />
       </div>
     </div>

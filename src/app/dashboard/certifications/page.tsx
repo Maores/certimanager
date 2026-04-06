@@ -1,4 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
+import { getGuestSessionId } from "@/lib/guest-session";
+import { guestGetCertTypes, guestGetCertifications, getGuestData } from "@/lib/guest-store";
 import { getCertStatus, formatDateHe } from "@/types/database";
 import type { CertStatus } from "@/types/database";
 import Link from "next/link";
@@ -42,37 +44,55 @@ export default async function CertificationsPage({
   const deptFilter = params.dept || "";
   const typeFilter = params.type || "";
 
-  const supabase = await createClient();
+  const guestSid = await getGuestSessionId();
 
-  // Fetch cert types and departments for filters
-  const [{ data: certTypes }, { data: deptData }] = await Promise.all([
-    supabase.from("cert_types").select("id, name").order("name"),
-    supabase.from("employees").select("department").order("department"),
-  ]);
+  let certTypes: any[] | null;
+  let departments: string[];
+  let certifications: any[] | null;
+  let error: any = null;
 
-  const departments = [
-    ...new Set(
-      (deptData || []).map((e) => e.department).filter(Boolean)
-    ),
-  ];
+  if (guestSid) {
+    certTypes = guestGetCertTypes(guestSid);
+    const data = getGuestData(guestSid);
+    departments = [...new Set(data.employees.map((e) => e.department).filter(Boolean))].sort() as string[];
+    certifications = guestGetCertifications(guestSid);
+  } else {
+    const supabase = await createClient();
 
-  const { data: certifications, error } = await supabase
-    .from("certifications")
-    .select(
+    const [certTypesResult, deptResult] = await Promise.all([
+      supabase.from("cert_types").select("id, name").order("name"),
+      supabase.from("employees").select("department").order("department"),
+    ]);
+
+    certTypes = certTypesResult.data;
+    const deptData = deptResult.data;
+    departments = [
+      ...new Set(
+        (deptData || []).map((e) => e.department).filter(Boolean)
+      ),
+    ] as string[];
+
+    const result = await supabase
+      .from("certifications")
+      .select(
+        `
+        id,
+        issue_date,
+        expiry_date,
+        image_url,
+        notes,
+        created_at,
+        updated_at,
+        cert_type_id,
+        employees ( id, first_name, last_name, department ),
+        cert_types ( id, name )
       `
-      id,
-      issue_date,
-      expiry_date,
-      image_url,
-      notes,
-      created_at,
-      updated_at,
-      cert_type_id,
-      employees ( id, first_name, last_name, department ),
-      cert_types ( id, name )
-    `
-    )
-    .order("expiry_date", { ascending: true });
+      )
+      .order("expiry_date", { ascending: true });
+
+    certifications = result.data;
+    error = result.error;
+  }
 
   if (error) {
     return (

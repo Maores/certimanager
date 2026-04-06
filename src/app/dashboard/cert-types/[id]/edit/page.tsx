@@ -2,6 +2,8 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { updateCertType } from "../../actions";
 import Link from "next/link";
+import { getGuestSessionId } from "@/lib/guest-session";
+import { guestGetCertType } from "@/lib/guest-store";
 
 export default async function EditCertTypePage({
   params,
@@ -9,13 +11,20 @@ export default async function EditCertTypePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
+  const guestSid = await getGuestSessionId();
 
-  const { data: certType } = await supabase
-    .from("cert_types")
-    .select("*")
-    .eq("id", id)
-    .single();
+  let certType: any;
+  if (guestSid) {
+    certType = guestGetCertType(guestSid, id);
+  } else {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("cert_types")
+      .select("*")
+      .eq("id", id)
+      .single();
+    certType = data;
+  }
 
   if (!certType) {
     notFound();

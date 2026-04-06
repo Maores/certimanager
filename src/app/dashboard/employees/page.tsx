@@ -4,6 +4,8 @@ import type { Employee } from "@/types/database";
 import { Search, UserPlus, Users } from "lucide-react";
 import { EmployeeListClient } from "@/components/employees/employee-list-client";
 import { AutoSubmitSelect } from "@/components/ui/auto-submit-select";
+import { getGuestSessionId } from "@/lib/guest-session";
+import { guestGetEmployees, guestGetDepartments } from "@/lib/guest-store";
 
 export default async function EmployeesPage({
   searchParams,
@@ -11,34 +13,45 @@ export default async function EmployeesPage({
   searchParams: Promise<{ q?: string; dept?: string }>;
 }) {
   const { q, dept } = await searchParams;
-  const supabase = await createClient();
+  const guestSid = await getGuestSessionId();
 
-  // Fetch distinct departments for the filter
-  const { data: allEmployees } = await supabase
-    .from("employees")
-    .select("department")
-    .order("department");
-  const departments = [
-    ...new Set(
-      (allEmployees || [])
-        .map((e) => e.department)
-        .filter(Boolean)
-    ),
-  ];
+  let departments: string[];
+  let employees: Employee[] | null;
 
-  let query = supabase.from("employees").select("*").order("first_name");
+  if (guestSid) {
+    departments = guestGetDepartments(guestSid);
+    employees = guestGetEmployees(guestSid, q, dept);
+  } else {
+    const supabase = await createClient();
 
-  if (q) {
-    query = query.or(
-      `first_name.ilike.%${q}%,last_name.ilike.%${q}%,employee_number.ilike.%${q}%,department.ilike.%${q}%`
-    );
+    // Fetch distinct departments for the filter
+    const { data: allEmployees } = await supabase
+      .from("employees")
+      .select("department")
+      .order("department");
+    departments = [
+      ...new Set(
+        (allEmployees || [])
+          .map((e) => e.department)
+          .filter(Boolean)
+      ),
+    ] as string[];
+
+    let query = supabase.from("employees").select("*").order("first_name");
+
+    if (q) {
+      query = query.or(
+        `first_name.ilike.%${q}%,last_name.ilike.%${q}%,employee_number.ilike.%${q}%,department.ilike.%${q}%`
+      );
+    }
+
+    if (dept) {
+      query = query.eq("department", dept);
+    }
+
+    const { data } = await query;
+    employees = data as Employee[] | null;
   }
-
-  if (dept) {
-    query = query.eq("department", dept);
-  }
-
-  const { data: employees } = await query;
 
   return (
     <div className="space-y-6">

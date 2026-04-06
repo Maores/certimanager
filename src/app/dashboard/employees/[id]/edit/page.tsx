@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { EmployeeForm } from "@/components/employees/employee-form";
 import { updateEmployee } from "../../actions";
 import Link from "next/link";
+import { getGuestSessionId } from "@/lib/guest-session";
+import { guestGetEmployee } from "@/lib/guest-store";
 
 export default async function EditEmployeePage({
   params,
@@ -10,13 +12,20 @@ export default async function EditEmployeePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
+  const guestSid = await getGuestSessionId();
 
-  const { data: employee } = await supabase
-    .from("employees")
-    .select("*")
-    .eq("id", id)
-    .single();
+  let employee: any;
+  if (guestSid) {
+    employee = guestGetEmployee(guestSid, id);
+  } else {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("employees")
+      .select("*")
+      .eq("id", id)
+      .single();
+    employee = data;
+  }
 
   if (!employee) {
     notFound();
