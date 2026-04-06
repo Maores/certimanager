@@ -8,7 +8,23 @@ import {
   guestCreateCertification,
   guestUpdateCertification,
   guestDeleteCertification,
+  getGuestData,
 } from "@/lib/guest-store";
+
+function mapSupabaseError(msg: string): string {
+  if (msg.includes("duplicate key") || msg.includes("unique constraint")) {
+    if (msg.includes("employee_number")) return "מספר עובד כבר קיים במערכת";
+    if (msg.includes("email")) return "כתובת אימייל כבר קיימת במערכת";
+    return "רשומה כפולה - הנתון כבר קיים במערכת";
+  }
+  if (msg.includes("foreign key") || msg.includes("violates foreign key")) {
+    return "לא ניתן לבצע את הפעולה - קיימים נתונים תלויים";
+  }
+  if (msg.includes("not found") || msg.includes("no rows")) {
+    return "הרשומה לא נמצאה";
+  }
+  return "שגיאה בשמירת הנתונים. נסה שוב";
+}
 
 export async function createCertification(formData: FormData) {
   const guestSid = await getGuestSessionId();
@@ -19,6 +35,20 @@ export async function createCertification(formData: FormData) {
     const expiry_date = formData.get("expiry_date") as string;
     const image_url = formData.get("image_url") as string | null;
     const notes = formData.get("notes") as string | null;
+
+    // Check for existing valid certification with same employee_id + cert_type_id
+    const guestData = getGuestData(guestSid);
+    const today = new Date().toISOString().split("T")[0];
+    const existingCert = guestData.certifications.find(
+      (c) =>
+        c.employee_id === employee_id &&
+        c.cert_type_id === cert_type_id &&
+        c.expiry_date &&
+        c.expiry_date > today
+    );
+    if (existingCert) {
+      throw new Error("לעובד זה כבר יש הסמכה בתוקף מסוג זה");
+    }
 
     await guestCreateCertification(guestSid, {
       employee_id,
@@ -45,6 +75,20 @@ export async function createCertification(formData: FormData) {
   const image_url = formData.get("image_url") as string | null;
   const notes = formData.get("notes") as string | null;
 
+  // Check for existing valid certification with same employee_id + cert_type_id
+  const today = new Date().toISOString().split("T")[0];
+  const { data: existingCerts } = await supabase
+    .from("certifications")
+    .select("id")
+    .eq("employee_id", employee_id)
+    .eq("cert_type_id", cert_type_id)
+    .gt("expiry_date", today)
+    .limit(1);
+
+  if (existingCerts && existingCerts.length > 0) {
+    throw new Error("לעובד זה כבר יש הסמכה בתוקף מסוג זה");
+  }
+
   const { error } = await supabase.from("certifications").insert({
     employee_id,
     cert_type_id,
@@ -55,7 +99,7 @@ export async function createCertification(formData: FormData) {
   });
 
   if (error) {
-    throw new Error(`Failed to create certification: ${error.message}`);
+    throw new Error(mapSupabaseError(error.message));
   }
 
   revalidatePath("/dashboard/certifications");
@@ -124,7 +168,7 @@ export async function updateCertification(id: string, formData: FormData) {
     .eq("id", id);
 
   if (error) {
-    throw new Error(`Failed to update certification: ${error.message}`);
+    throw new Error(mapSupabaseError(error.message));
   }
 
   revalidatePath("/dashboard/certifications");
@@ -163,7 +207,7 @@ export async function deleteCertification(id: string) {
     .eq("id", id);
 
   if (error) {
-    throw new Error(`Failed to delete certification: ${error.message}`);
+    throw new Error(mapSupabaseError(error.message));
   }
 
   revalidatePath("/dashboard/certifications");
@@ -185,6 +229,8 @@ export async function uploadCertImage(formData: FormData) {
   }
 
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
 
   const file = formData.get("file") as File;
   if (!file || file.size === 0) {
@@ -224,6 +270,8 @@ export async function getSignedUrl(filePath: string) {
   }
 
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
 
   const { data, error } = await supabase.storage
     .from("cert-images")
@@ -242,6 +290,8 @@ export async function deleteCertImage(filePath: string) {
   }
 
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
 
   await supabase.storage.from("cert-images").remove([filePath]);
 }

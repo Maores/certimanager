@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import type { Employee } from "@/types/database";
 import { Search, UserPlus, Users } from "lucide-react";
 import { EmployeeListClient } from "@/components/employees/employee-list-client";
@@ -23,11 +24,14 @@ export default async function EmployeesPage({
     employees = guestGetEmployees(guestSid, q, dept);
   } else {
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) redirect("/login");
 
     // Fetch distinct departments for the filter
     const { data: allEmployees } = await supabase
       .from("employees")
       .select("department")
+      .eq("manager_id", user.id)
       .order("department");
     departments = [
       ...new Set(
@@ -37,7 +41,7 @@ export default async function EmployeesPage({
       ),
     ] as string[];
 
-    let query = supabase.from("employees").select("*").order("first_name");
+    let query = supabase.from("employees").select("*").eq("manager_id", user.id).order("first_name");
 
     if (q) {
       // Escape PostgREST special characters to prevent parse errors.

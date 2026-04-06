@@ -49,13 +49,20 @@ export type CertStatus = "valid" | "expiring_soon" | "expired" | "unknown";
 
 export function getCertStatus(expiryDate: string | null): CertStatus {
   if (!expiryDate) return "unknown";
-  const expiry = new Date(expiryDate);
-  const now = new Date();
-  const thirtyDaysFromNow = new Date();
-  thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
 
-  if (expiry < now) return "expired";
-  if (expiry < thirtyDaysFromNow) return "expiring_soon";
+  // Normalize to date-only comparison (YYYY-MM-DD) to avoid timezone issues
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+  // Compare as strings (YYYY-MM-DD format is lexicographically sortable)
+  if (expiryDate < todayStr) return "expired";
+
+  // Calculate 30 days from now
+  const thirtyDays = new Date(today);
+  thirtyDays.setDate(thirtyDays.getDate() + 30);
+  const thirtyStr = `${thirtyDays.getFullYear()}-${String(thirtyDays.getMonth() + 1).padStart(2, '0')}-${String(thirtyDays.getDate()).padStart(2, '0')}`;
+
+  if (expiryDate <= thirtyStr) return "expiring_soon";
   return "valid";
 }
 
@@ -66,7 +73,10 @@ export function formatDateHe(dateString: string | null): string {
 
 export function daysUntilExpiry(expiryDate: string | null): number | null {
   if (!expiryDate) return null;
-  const expiry = new Date(expiryDate);
+  // Parse both as local dates for consistent comparison
+  const [y, m, d] = expiryDate.split('-').map(Number);
+  const expiry = new Date(y, m - 1, d); // local midnight
   const now = new Date();
+  now.setHours(0, 0, 0, 0); // local midnight
   return Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 }

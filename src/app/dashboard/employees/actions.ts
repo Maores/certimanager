@@ -10,6 +10,21 @@ import {
   guestDeleteEmployees,
 } from "@/lib/guest-store";
 
+function mapSupabaseError(msg: string): string {
+  if (msg.includes("duplicate key") || msg.includes("unique constraint")) {
+    if (msg.includes("employee_number")) return "מספר עובד כבר קיים במערכת";
+    if (msg.includes("email")) return "כתובת אימייל כבר קיימת במערכת";
+    return "רשומה כפולה - הנתון כבר קיים במערכת";
+  }
+  if (msg.includes("foreign key") || msg.includes("violates foreign key")) {
+    return "לא ניתן לבצע את הפעולה - קיימים נתונים תלויים";
+  }
+  if (msg.includes("not found") || msg.includes("no rows")) {
+    return "הרשומה לא נמצאה";
+  }
+  return "שגיאה בשמירת הנתונים. נסה שוב";
+}
+
 export async function createEmployee(formData: FormData) {
   const guestSid = await getGuestSessionId();
   if (guestSid) {
@@ -49,7 +64,7 @@ export async function createEmployee(formData: FormData) {
   });
 
   if (error) {
-    throw new Error(error.message);
+    throw new Error(mapSupabaseError(error.message));
   }
 
   redirect("/dashboard/employees");
@@ -100,7 +115,7 @@ export async function updateEmployee(id: string, formData: FormData) {
     .eq("manager_id", user.id);
 
   if (error) {
-    throw new Error(error.message);
+    throw new Error(mapSupabaseError(error.message));
   }
 
   redirect("/dashboard/employees");
@@ -133,7 +148,7 @@ export async function deleteEmployee(id: string) {
     .eq("manager_id", user.id);
 
   if (error) {
-    throw new Error(error.message);
+    throw new Error(mapSupabaseError(error.message));
   }
 
   redirect("/dashboard/employees");
@@ -168,16 +183,16 @@ export async function deleteEmployees(ids: string[]): Promise<{ count: number }>
 
   for (let i = 0; i < ids.length; i += BATCH_SIZE) {
     const batch = ids.slice(i, i + BATCH_SIZE);
-    const { error } = await supabase
+    const { error, count } = await supabase
       .from("employees")
-      .delete()
+      .delete({ count: 'exact' })
       .in("id", batch)
       .eq("manager_id", user.id);
 
     if (error) {
-      throw new Error(error.message);
+      throw new Error(mapSupabaseError(error.message));
     }
-    deletedCount += batch.length;
+    deletedCount += count ?? 0;
   }
 
   return { count: deletedCount };

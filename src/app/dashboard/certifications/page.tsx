@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import { getGuestSessionId } from "@/lib/guest-session";
 import { guestGetCertTypes, guestGetCertifications, getGuestData } from "@/lib/guest-store";
 import { getCertStatus, formatDateHe } from "@/types/database";
@@ -58,10 +59,12 @@ export default async function CertificationsPage({
     certifications = guestGetCertifications(guestSid);
   } else {
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) redirect("/login");
 
     const [certTypesResult, deptResult] = await Promise.all([
-      supabase.from("cert_types").select("id, name").order("name"),
-      supabase.from("employees").select("department").order("department"),
+      supabase.from("cert_types").select("id, name").eq("manager_id", user.id).order("name"),
+      supabase.from("employees").select("department").eq("manager_id", user.id).order("department"),
     ]);
 
     certTypes = certTypesResult.data;
@@ -84,10 +87,11 @@ export default async function CertificationsPage({
         created_at,
         updated_at,
         cert_type_id,
-        employees ( id, first_name, last_name, department ),
+        employees!inner ( id, first_name, last_name, department, manager_id ),
         cert_types ( id, name )
       `
       )
+      .eq("employees.manager_id", user.id)
       .order("expiry_date", { ascending: true });
 
     certifications = result.data;

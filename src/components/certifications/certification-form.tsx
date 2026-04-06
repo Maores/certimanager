@@ -24,6 +24,23 @@ interface CertificationFormProps {
 const inputClasses =
   "w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors";
 
+/**
+ * Safely adds months to a date, clamping to the last day of the target month
+ * if the day overflows (e.g., Jan 31 + 1 month → Feb 28/29).
+ */
+function addMonthsSafe(date: Date, months: number): Date {
+  const result = new Date(date);
+  const originalDay = result.getDate();
+  result.setMonth(result.getMonth() + months);
+
+  // If the day changed due to overflow, clamp to last day of target month
+  if (result.getDate() !== originalDay) {
+    result.setDate(0);
+  }
+
+  return result;
+}
+
 export default function CertificationForm({
   employees,
   certTypes,
@@ -99,8 +116,7 @@ export default function CertificationForm({
     if (issueDate && certTypeId) {
       const certType = certTypes.find((ct) => ct.id === certTypeId);
       if (certType) {
-        const issue = new Date(issueDate);
-        issue.setMonth(issue.getMonth() + certType.default_validity_months);
+        const issue = addMonthsSafe(new Date(issueDate), certType.default_validity_months);
         setExpiryDate(issue.toISOString().split("T")[0]);
       }
     }
@@ -112,8 +128,7 @@ export default function CertificationForm({
     if (selectedCertType && date) {
       const certType = certTypes.find((ct) => ct.id === selectedCertType);
       if (certType) {
-        const issue = new Date(date);
-        issue.setMonth(issue.getMonth() + certType.default_validity_months);
+        const issue = addMonthsSafe(new Date(date), certType.default_validity_months);
         setExpiryDate(issue.toISOString().split("T")[0]);
       }
     }

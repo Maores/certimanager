@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import { getGuestSessionId } from "@/lib/guest-session";
 import { getGuestData } from "@/lib/guest-store";
 import { getCertStatus } from "@/types/database";
@@ -36,19 +37,23 @@ export default async function ReportsPage() {
     }).sort((a: any, b: any) => (a.expiry_date || "").localeCompare(b.expiry_date || ""));
   } else {
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) redirect("/login");
+
     const [
       { data: employees },
       { data: certifications },
       { data: certTypes },
     ] = await Promise.all([
-      supabase.from("employees").select("id, first_name, last_name, department"),
+      supabase.from("employees").select("id, first_name, last_name, department").eq("manager_id", user.id),
       supabase
         .from("certifications")
         .select(
-          "id, expiry_date, cert_type_id, employee_id, employees(first_name, last_name, department), cert_types(name)"
+          "id, expiry_date, cert_type_id, employee_id, employees!inner(first_name, last_name, department, manager_id), cert_types(name)"
         )
+        .eq("employees.manager_id", user.id)
         .order("expiry_date", { ascending: true }),
-      supabase.from("cert_types").select("id, name"),
+      supabase.from("cert_types").select("id, name").eq("manager_id", user.id),
     ]);
     allEmployees = employees || [];
     allCertsRaw = certifications || [];
