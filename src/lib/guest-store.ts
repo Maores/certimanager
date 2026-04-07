@@ -234,3 +234,13 @@ export function guestDeleteCertification(sid: string, id: string): boolean {
 export function guestGetEmployeeCount(sid: string): number {
   return getGuestData(sid).employees.length;
 }
+
+/**
+ * Check whether a guest session ID is registered in the in-memory store.
+ * Used by middleware to validate the guest_session cookie value.
+ * NOTE: This helper deliberately does NOT call getGuestData (which auto-seeds),
+ * so an unknown/forged session ID returns false without creating a new session.
+ */
+export function hasGuestSession(sessionId: string): boolean {
+  return sessions.has(sessionId);
+}

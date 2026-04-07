@@ -75,7 +75,26 @@ export async function createCertification(formData: FormData) {
   const image_url = formData.get("image_url") as string | null;
   const notes = formData.get("notes") as string | null;
 
+  // Verify employee belongs to the current manager before doing anything else
+  const { data: emp } = await supabase
+    .from("employees")
+    .select("id")
+    .eq("id", employee_id)
+    .eq("manager_id", user.id)
+    .single();
+  if (!emp) throw new Error("Unauthorized");
+
+  // Verify cert type belongs to the current manager
+  const { data: ct } = await supabase
+    .from("cert_types")
+    .select("id")
+    .eq("id", cert_type_id)
+    .eq("manager_id", user.id)
+    .single();
+  if (!ct) throw new Error("Unauthorized");
+
   // Check for existing valid certification with same employee_id + cert_type_id
+  // (ownership already verified above so no need to re-scope)
   const today = new Date().toISOString().split("T")[0];
   const { data: existingCerts } = await supabase
     .from("certifications")

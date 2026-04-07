@@ -1,11 +1,14 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { hasGuestSession } from "@/lib/guest-store";
 
 const GUEST_COOKIE = "guest_session";
 
 export async function middleware(request: NextRequest) {
-  // Guest sessions bypass Supabase auth entirely
-  const isGuest = request.cookies.has(GUEST_COOKIE);
+  // Guest sessions bypass Supabase auth entirely — but validate the cookie value
+  // against the server-side sessions Map to prevent cookie forgery.
+  const guestCookieId = request.cookies.get(GUEST_COOKIE)?.value;
+  const isGuest = guestCookieId ? hasGuestSession(guestCookieId) : false;
 
   if (isGuest) {
     // Guest trying to access login → redirect to dashboard
@@ -17,6 +20,9 @@ export async function middleware(request: NextRequest) {
     // Guest accessing dashboard or other pages → allow through
     return NextResponse.next({ request });
   }
+
+  // Track whether we need to purge a forged/expired guest cookie from the response
+  const shouldDeleteGuestCookie = !!guestCookieId && !isGuest;
 
   let supabaseResponse = NextResponse.next({ request });
 
@@ -61,6 +67,11 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);
+  }
+
+  // Delete forged/expired guest cookie so the browser stops sending it
+  if (shouldDeleteGuestCookie) {
+    supabaseResponse.cookies.delete(GUEST_COOKIE);
   }
 
   return supabaseResponse;
