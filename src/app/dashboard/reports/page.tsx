@@ -9,7 +9,6 @@ import {
   CheckCircle,
   AlertTriangle,
   XCircle,
-  ShieldCheck,
   Clock,
   Building2,
   UserX,
@@ -73,16 +72,12 @@ export default async function ReportsPage() {
   // ── Compliance overview ──
   const totalEmployees = allEmployees.length;
   const totalCerts = allCerts.length;
-  const validCount = allCerts.filter((c: any) => c.status === "valid").length;
   const expiringCount = allCerts.filter(
     (c: any) => c.status === "expiring_soon"
   ).length;
   const expiredCount = allCerts.filter(
     (c: any) => c.status === "expired"
   ).length;
-  const validPercent =
-    totalCerts > 0 ? Math.round((validCount / totalCerts) * 100) : 0;
-
   // ── Expiring timeline ──
   const now = new Date();
   const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -121,10 +116,6 @@ export default async function ReportsPage() {
     const deptExpired = deptCerts.filter(
       (c: any) => c.status === "expired"
     ).length;
-    const compliance =
-      deptCerts.length > 0
-        ? Math.round((deptValid / deptCerts.length) * 100)
-        : 0;
     return {
       name: dept,
       employees: deptEmployees.length,
@@ -132,7 +123,6 @@ export default async function ReportsPage() {
       valid: deptValid,
       expiring: deptExpiring,
       expired: deptExpired,
-      compliance,
     };
   });
 
@@ -164,12 +154,12 @@ export default async function ReportsPage() {
           דוחות
         </h1>
         <p className="text-xs sm:text-sm mt-1 text-muted">
-          סקירת ציות הסמכות וסטטיסטיקות
+          סקירת הסמכות וסטטיסטיקות
         </p>
       </div>
 
       {/* ── Section A: Compliance Overview Cards ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
           icon={Users}
           label="סה״כ עובדים"
@@ -181,12 +171,6 @@ export default async function ReportsPage() {
           label="סה״כ הסמכות"
           value={totalCerts}
           color="blue"
-        />
-        <StatCard
-          icon={ShieldCheck}
-          label="ציות"
-          value={`${validPercent}%`}
-          color={validPercent >= 80 ? "green" : validPercent >= 50 ? "yellow" : "red"}
         />
         <StatCard
           icon={AlertTriangle}
@@ -258,9 +242,6 @@ export default async function ReportsPage() {
                   <th className="text-right px-4 sm:px-5 py-3 font-medium text-muted">
                     פג תוקף
                   </th>
-                  <th className="text-right px-4 sm:px-5 py-3 font-medium text-muted">
-                    ציות
-                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -283,9 +264,6 @@ export default async function ReportsPage() {
                     </td>
                     <td className="px-4 sm:px-5 py-3.5 text-danger ltr-nums">
                       {dept.expired}
-                    </td>
-                    <td className="px-4 sm:px-5 py-3.5">
-                      <ComplianceBadge value={dept.compliance} />
                     </td>
                   </tr>
                 ))}
@@ -440,19 +418,6 @@ function TimelineBucket({
         </ul>
       )}
     </div>
-  );
-}
-
-function ComplianceBadge({ value }: { value: number }) {
-  const color =
-    value >= 80 ? "green" : value >= 50 ? "yellow" : "red";
-  const c = colorStyles[color];
-  return (
-    <span
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${c.bg} ${c.text} ltr-nums`}
-    >
-      {value}%
-    </span>
   );
 }
 
