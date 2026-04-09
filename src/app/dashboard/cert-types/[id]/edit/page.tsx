@@ -1,4 +1,4 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound, redirect as navRedirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { updateCertType } from "../../actions";
 import Link from "next/link";
@@ -18,10 +18,14 @@ export default async function EditCertTypePage({
     certType = guestGetCertType(guestSid, id);
   } else {
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) navRedirect("/login");
+
     const { data } = await supabase
       .from("cert_types")
       .select("*")
       .eq("id", id)
+      .eq("manager_id", user!.id)
       .single();
     certType = data;
   }
@@ -33,7 +37,7 @@ export default async function EditCertTypePage({
   async function handleUpdate(formData: FormData) {
     "use server";
     await updateCertType(id, formData);
-    redirect("/dashboard/cert-types");
+    navRedirect("/dashboard/cert-types");
   }
 
   return (

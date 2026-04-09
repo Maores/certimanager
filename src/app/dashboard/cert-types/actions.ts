@@ -36,12 +36,19 @@ export async function createCertType(formData: FormData) {
 
   if (!user) throw new Error("Not authenticated");
 
-  const name = formData.get("name") as string;
+  const name = (formData.get("name") as string || "").trim();
   const default_validity_months = parseInt(
     formData.get("default_validity_months") as string,
     10
   );
   const description = formData.get("description") as string | null;
+
+  if (!name) {
+    throw new Error("שם סוג ההסמכה הוא שדה חובה");
+  }
+  if (isNaN(default_validity_months) || default_validity_months < 1) {
+    throw new Error("תוקף ברירת מחדל חייב להיות מספר חיובי");
+  }
 
   const { error } = await supabase.from("cert_types").insert({
     manager_id: user.id,
@@ -51,7 +58,11 @@ export async function createCertType(formData: FormData) {
   });
 
   if (error) {
-    throw new Error(`Failed to create cert type: ${error.message}`);
+    throw new Error(
+      error.message.includes("unique constraint")
+        ? "סוג הסמכה בשם זה כבר קיים"
+        : "שגיאה ביצירת סוג הסמכה. נסה שוב"
+    );
   }
 
   revalidatePath("/dashboard/cert-types");
@@ -85,12 +96,19 @@ export async function updateCertType(id: string, formData: FormData) {
 
   if (!user) throw new Error("Not authenticated");
 
-  const name = formData.get("name") as string;
+  const name = (formData.get("name") as string || "").trim();
   const default_validity_months = parseInt(
     formData.get("default_validity_months") as string,
     10
   );
   const description = formData.get("description") as string | null;
+
+  if (!name) {
+    throw new Error("שם סוג ההסמכה הוא שדה חובה");
+  }
+  if (isNaN(default_validity_months) || default_validity_months < 1) {
+    throw new Error("תוקף ברירת מחדל חייב להיות מספר חיובי");
+  }
 
   const { error } = await supabase
     .from("cert_types")
@@ -103,7 +121,11 @@ export async function updateCertType(id: string, formData: FormData) {
     .eq("manager_id", user.id);
 
   if (error) {
-    throw new Error(`Failed to update cert type: ${error.message}`);
+    throw new Error(
+      error.message.includes("unique constraint")
+        ? "סוג הסמכה בשם זה כבר קיים"
+        : "שגיאה בעדכון סוג ההסמכה. נסה שוב"
+    );
   }
 
   revalidatePath("/dashboard/cert-types");

@@ -12,7 +12,7 @@ import {
 
 function mapSupabaseError(msg: string): string {
   if (msg.includes("duplicate key") || msg.includes("unique constraint")) {
-    if (msg.includes("employee_number")) return "מספר עובד כבר קיים במערכת";
+    if (msg.includes("employee_number")) return "מספר זהות/דרכון כבר קיים במערכת";
     if (msg.includes("email")) return "כתובת אימייל כבר קיימת במערכת";
     return "רשומה כפולה - הנתון כבר קיים במערכת";
   }
@@ -51,14 +51,22 @@ export async function createEmployee(formData: FormData) {
     redirect("/login");
   }
 
+  const first_name = (formData.get("first_name") as string || "").trim();
+  const last_name = (formData.get("last_name") as string || "").trim();
+  const employee_number = (formData.get("employee_number") as string || "").trim();
+
+  if (!first_name || !last_name || !employee_number) {
+    throw new Error("שם פרטי, שם משפחה ומספר זהות/דרכון הם שדות חובה");
+  }
+
   const { error } = await supabase.from("employees").insert({
     manager_id: user.id,
-    first_name: formData.get("first_name") as string,
-    last_name: formData.get("last_name") as string,
-    employee_number: formData.get("employee_number") as string,
-    department: formData.get("department") as string,
-    phone: formData.get("phone") as string,
-    email: formData.get("email") as string,
+    first_name,
+    last_name,
+    employee_number,
+    department: (formData.get("department") as string || "").trim(),
+    phone: (formData.get("phone") as string || "").trim(),
+    email: (formData.get("email") as string || "").trim(),
     status: (formData.get("status") as string) || "פעיל",
     notes: (formData.get("notes") as string) || null,
   });
@@ -99,7 +107,7 @@ export async function updateEmployee(id: string, formData: FormData) {
     redirect("/login");
   }
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("employees")
     .update({
       first_name: formData.get("first_name") as string,
@@ -112,10 +120,15 @@ export async function updateEmployee(id: string, formData: FormData) {
       notes: (formData.get("notes") as string) || null,
     })
     .eq("id", id)
-    .eq("manager_id", user.id);
+    .eq("manager_id", user.id)
+    .select("id");
 
   if (error) {
     throw new Error(mapSupabaseError(error.message));
+  }
+
+  if (!updated || updated.length === 0) {
+    throw new Error("הרשומה לא נמצאה");
   }
 
   redirect("/dashboard/employees");

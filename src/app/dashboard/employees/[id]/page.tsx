@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCertStatus, formatDateHe } from "@/types/database";
 import type { Employee, Certification } from "@/types/database";
@@ -27,11 +27,14 @@ export default async function EmployeeDetailPage({
     certifications = guestGetCertsByEmployee(guestSid, id);
   } else {
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) redirect("/login");
 
     const { data: empData } = await supabase
       .from("employees")
       .select("*")
       .eq("id", id)
+      .eq("manager_id", user!.id)
       .single();
 
     employee = empData as Employee | null;
@@ -129,7 +132,7 @@ export default async function EmployeeDetailPage({
         </h2>
         <dl className="grid gap-4 sm:grid-cols-2">
           <div className="rounded-lg bg-[#f8fafc] p-3">
-            <dt className="text-xs font-medium text-[#64748b] uppercase tracking-wide">מספר עובד</dt>
+            <dt className="text-xs font-medium text-[#64748b] uppercase tracking-wide">מספר זהות/דרכון</dt>
             <dd className="mt-1 text-sm font-medium text-[#0f172a]">
               {emp.employee_number}
             </dd>

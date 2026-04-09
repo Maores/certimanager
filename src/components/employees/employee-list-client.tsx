@@ -82,7 +82,7 @@ export function EmployeeListClient({ employees }: EmployeeListClientProps) {
                 </button>
               </th>
               <th className="px-6 py-3 text-right text-sm font-medium text-muted">שם</th>
-              <th className="px-6 py-3 text-right text-sm font-medium text-muted">מספר עובד</th>
+              <th className="px-6 py-3 text-right text-sm font-medium text-muted">מספר זהות/דרכון</th>
               <th className="px-6 py-3 text-right text-sm font-medium text-muted">מחלקה</th>
               <th className="px-6 py-3 text-right text-sm font-medium text-muted">טלפון</th>
             </tr>

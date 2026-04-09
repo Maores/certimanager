@@ -71,6 +71,7 @@ export default function CertificationForm({
   );
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
 
   function checkDuplicate(employeeId: string, certTypeId: string) {
@@ -185,21 +186,32 @@ export default function CertificationForm({
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSubmitting(true);
+    setFormError(null);
 
-    const formData = new FormData(e.currentTarget);
-    formData.set("image_url", imageUrl);
-    formData.set("expiry_date", expiryDate);
+    try {
+      const formData = new FormData(e.currentTarget);
+      formData.set("image_url", imageUrl);
+      formData.set("expiry_date", expiryDate);
 
-    if (isEdit && certification) {
-      await updateCertification(certification.id, formData);
-    } else {
-      await createCertification(formData);
+      if (isEdit && certification) {
+        await updateCertification(certification.id, formData);
+      } else {
+        await createCertification(formData);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "שגיאה בשמירת ההסמכה. נסה שוב";
+      setFormError(msg);
     }
     setSubmitting(false);
   }
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
+      {formError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {formError}
+        </div>
+      )}
       {/* Employee select */}
       <div>
         <label

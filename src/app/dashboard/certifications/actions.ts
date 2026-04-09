@@ -13,7 +13,7 @@ import {
 
 function mapSupabaseError(msg: string): string {
   if (msg.includes("duplicate key") || msg.includes("unique constraint")) {
-    if (msg.includes("employee_number")) return "מספר עובד כבר קיים במערכת";
+    if (msg.includes("employee_number")) return "מספר זהות/דרכון כבר קיים במערכת";
     if (msg.includes("email")) return "כתובת אימייל כבר קיימת במערכת";
     return "רשומה כפולה - הנתון כבר קיים במערכת";
   }
@@ -174,6 +174,24 @@ export async function updateCertification(id: string, formData: FormData) {
   const image_url = formData.get("image_url") as string | null;
   const notes = formData.get("notes") as string | null;
 
+  // Verify new employee belongs to the current manager
+  const { data: emp } = await supabase
+    .from("employees")
+    .select("id")
+    .eq("id", employee_id)
+    .eq("manager_id", user.id)
+    .single();
+  if (!emp) throw new Error("Unauthorized");
+
+  // Verify new cert type belongs to the current manager
+  const { data: ct } = await supabase
+    .from("cert_types")
+    .select("id")
+    .eq("id", cert_type_id)
+    .eq("manager_id", user.id)
+    .single();
+  if (!ct) throw new Error("Unauthorized");
+
   const { error } = await supabase
     .from("certifications")
     .update({
@@ -292,6 +310,15 @@ export async function getSignedUrl(filePath: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
+  // Verify file belongs to a certification owned by the current user
+  const { data: ownerCheck } = await supabase
+    .from("certifications")
+    .select("id, employees!inner(manager_id)")
+    .eq("image_url", filePath)
+    .eq("employees.manager_id", user.id)
+    .limit(1);
+  if (!ownerCheck || ownerCheck.length === 0) return null;
+
   const { data, error } = await supabase.storage
     .from("cert-images")
     .createSignedUrl(filePath, 60 * 60); // 1 hour
@@ -311,6 +338,15 @@ export async function deleteCertImage(filePath: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
+
+  // Verify file belongs to a certification owned by the current user
+  const { data: ownerCheck } = await supabase
+    .from("certifications")
+    .select("id, employees!inner(manager_id)")
+    .eq("image_url", filePath)
+    .eq("employees.manager_id", user.id)
+    .limit(1);
+  if (!ownerCheck || ownerCheck.length === 0) return;
 
   await supabase.storage.from("cert-images").remove([filePath]);
 }

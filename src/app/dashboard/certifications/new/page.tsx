@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import { getGuestSessionId } from "@/lib/guest-session";
 import { guestGetEmployees, guestGetCertTypes, getGuestData } from "@/lib/guest-store";
 import CertificationForm from "@/components/certifications/certification-form";
@@ -21,20 +22,28 @@ export default async function NewCertificationPage() {
     }));
   } else {
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) redirect("/login");
 
     const { data: empData } = await supabase
       .from("employees")
       .select("*")
+      .eq("manager_id", user!.id)
       .order("first_name");
 
     const { data: ctData } = await supabase
       .from("cert_types")
       .select("*")
+      .eq("manager_id", user!.id)
       .order("name");
 
-    const { data: ecData } = await supabase
-      .from("certifications")
-      .select("employee_id, cert_type_id, expiry_date");
+    const empIds = (empData || []).map((e: any) => e.id);
+    const { data: ecData } = empIds.length > 0
+      ? await supabase
+          .from("certifications")
+          .select("employee_id, cert_type_id, expiry_date")
+          .in("employee_id", empIds)
+      : { data: [] };
 
     employees = empData || [];
     certTypesData = ctData || [];

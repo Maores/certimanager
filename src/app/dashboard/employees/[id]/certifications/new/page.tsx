@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getGuestSessionId } from "@/lib/guest-session";
 import { guestGetEmployee, guestGetCertTypes, guestGetCertsByEmployee } from "@/lib/guest-store";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import CertificationForm from "@/components/certifications/certification-form";
 
 export default async function NewCertificationForEmployeePage({
@@ -29,11 +29,14 @@ export default async function NewCertificationForEmployeePage({
     }));
   } else {
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) redirect("/login");
 
     const { data: empData } = await supabase
       .from("employees")
       .select("*")
       .eq("id", id)
+      .eq("manager_id", user!.id)
       .single();
 
     employee = empData;
@@ -45,6 +48,7 @@ export default async function NewCertificationForEmployeePage({
     const { data: ctData } = await supabase
       .from("cert_types")
       .select("*")
+      .eq("manager_id", user!.id)
       .order("name");
 
     const { data: ecData } = await supabase

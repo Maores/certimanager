@@ -16,18 +16,27 @@ const inputClasses =
 export function EmployeeForm({ employee, action }: EmployeeFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(formData: FormData) {
     setLoading(true);
+    setError(null);
     try {
       await action(formData);
-    } catch {
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "שגיאה בשמירת הנתונים. נסה שוב";
+      setError(msg);
       setLoading(false);
     }
   }
 
   return (
     <form action={handleSubmit} className="space-y-5">
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
       <div className="grid gap-5 sm:grid-cols-2">
         {/* First Name */}
         <div>
@@ -72,7 +81,7 @@ export function EmployeeForm({ employee, action }: EmployeeFormProps) {
           htmlFor="employee_number"
           className="mb-1.5 block text-sm font-medium text-foreground"
         >
-          מספר עובד
+          מספר זהות/דרכון
         </label>
         <input
           type="text"

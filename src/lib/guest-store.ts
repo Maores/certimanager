@@ -52,8 +52,15 @@ function seed(): GuestData {
   return { employees, certTypes, certifications };
 }
 
+const MAX_GUEST_SESSIONS = 100;
+
 export function getGuestData(sessionId: string): GuestData {
   if (!sessions.has(sessionId)) {
+    // Prevent unbounded memory growth — evict oldest session if at limit
+    if (sessions.size >= MAX_GUEST_SESSIONS) {
+      const oldest = sessions.keys().next().value;
+      if (oldest) sessions.delete(oldest);
+    }
     sessions.set(sessionId, seed());
   }
   return sessions.get(sessionId)!;
@@ -162,6 +169,8 @@ export function guestDeleteCertType(sid: string, id: string): boolean {
   const data = getGuestData(sid);
   const before = data.certTypes.length;
   data.certTypes = data.certTypes.filter((ct) => ct.id !== id);
+  // Cascade-delete certifications referencing this cert type
+  data.certifications = data.certifications.filter((c) => c.cert_type_id !== id);
   return data.certTypes.length < before;
 }
 

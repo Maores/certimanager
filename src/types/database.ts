@@ -68,6 +68,12 @@ export function getCertStatus(expiryDate: string | null): CertStatus {
 
 export function formatDateHe(dateString: string | null): string {
   if (!dateString) return "—";
+  // Parse date-only strings (YYYY-MM-DD) as local dates to avoid timezone shift
+  const parts = dateString.split("-");
+  if (parts.length === 3) {
+    const [y, m, d] = parts.map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString("he-IL");
+  }
   return new Date(dateString).toLocaleDateString("he-IL");
 }
 

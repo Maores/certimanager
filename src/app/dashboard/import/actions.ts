@@ -66,7 +66,7 @@ export async function parseExcelFile(formData: FormData): Promise<ParseResponse>
     return { success: false, error: "יש להעלות קובץ בפורמט xlsx בלבד" };
   }
   if (file.size > MAX_FILE_SIZE) {
-    return { success: false, error: "הקובץ גדול מדי. הגודל המקסימלי הוא 10MB" };
+    return { success: false, error: "הקובץ גדול מדי. הגודל המקסימלי הוא 5MB" };
   }
 
   try {
@@ -75,11 +75,13 @@ export async function parseExcelFile(formData: FormData): Promise<ParseResponse>
 
     // Check existing employees (scoped by manager)
     const empNumbers = Array.from(result.uniqueWorkers.keys());
-    const { data: existingEmps } = await supabase
-      .from("employees")
-      .select("id, employee_number")
-      .eq("manager_id", user.id)
-      .in("employee_number", empNumbers);
+    const { data: existingEmps } = empNumbers.length > 0
+      ? await supabase
+          .from("employees")
+          .select("id, employee_number")
+          .eq("manager_id", user.id)
+          .in("employee_number", empNumbers)
+      : { data: [] };
 
     const existingEmpMap = new Map<string, string>();
     for (const emp of existingEmps || []) {
@@ -196,11 +198,13 @@ export async function executeBulkImport(
     // Step 2: Insert new employees in batches of 50
     // Re-verify which employees exist server-side (don't trust client existsInDb)
     const allEmpNumbers = workers.map(w => w.employeeNumber);
-    const { data: currentExisting } = await supabase
-      .from("employees")
-      .select("employee_number")
-      .eq("manager_id", user.id)
-      .in("employee_number", allEmpNumbers);
+    const { data: currentExisting } = allEmpNumbers.length > 0
+      ? await supabase
+          .from("employees")
+          .select("employee_number")
+          .eq("manager_id", user.id)
+          .in("employee_number", allEmpNumbers)
+      : { data: [] };
 
     const existingEmpSet = new Set((currentExisting || []).map(e => e.employee_number));
     const newWorkers = workers.filter(w => !existingEmpSet.has(w.employeeNumber));
@@ -314,8 +318,7 @@ export async function executeBulkImport(
         errors,
       },
     };
-  } catch (e: any) {
-    console.error("Bulk import error:", e);
+  } catch {
     return { success: false, error: "שגיאה כללית בייבוא. נסו שוב מאוחר יותר" };
   }
 }

@@ -5,23 +5,30 @@
  */
 
 import { cookies } from "next/headers";
+import { hasGuestSession } from "@/lib/guest-store";
 
 const GUEST_COOKIE = "guest_session";
 
 /**
  * Check if the current request is a guest session.
+ * Validates the cookie value against the server-side sessions Map.
  */
 export async function isGuestSession(): Promise<boolean> {
   const cookieStore = await cookies();
-  return cookieStore.has(GUEST_COOKIE);
+  const sid = cookieStore.get(GUEST_COOKIE)?.value;
+  if (!sid) return false;
+  return hasGuestSession(sid);
 }
 
 /**
  * Get the guest session ID, or null if not a guest.
+ * Validates the cookie value against the server-side sessions Map.
  */
 export async function getGuestSessionId(): Promise<string | null> {
   const cookieStore = await cookies();
-  return cookieStore.get(GUEST_COOKIE)?.value ?? null;
+  const sid = cookieStore.get(GUEST_COOKIE)?.value ?? null;
+  if (!sid) return null;
+  return hasGuestSession(sid) ? sid : null;
 }
 
 /**
@@ -29,7 +36,7 @@ export async function getGuestSessionId(): Promise<string | null> {
  */
 export async function createGuestSession(): Promise<string> {
   const cookieStore = await cookies();
-  const sessionId = `guest-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const sessionId = `guest-${crypto.randomUUID()}`;
   cookieStore.set(GUEST_COOKIE, sessionId, {
     httpOnly: true,
     sameSite: "lax",

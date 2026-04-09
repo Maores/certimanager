@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { EmployeeForm } from "@/components/employees/employee-form";
 import { updateEmployee } from "../../actions";
@@ -19,10 +19,14 @@ export default async function EditEmployeePage({
     employee = guestGetEmployee(guestSid, id);
   } else {
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) redirect("/login");
+
     const { data } = await supabase
       .from("employees")
       .select("*")
       .eq("id", id)
+      .eq("manager_id", user!.id)
       .single();
     employee = data;
   }
