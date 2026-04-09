@@ -228,11 +228,14 @@ export function parseExcel(buffer: ArrayBuffer): ParseResult {
     });
   }
 
+  // Recompute noCertWorkers from final state (a worker may have gained certs via merge)
+  const finalNoCertWorkers = Array.from(uniqueWorkers.values()).filter(w => w.certTypeNames.length === 0);
+
   return {
     sheets,
     uniqueWorkers,
     certTypeNames: Array.from(certTypeNames),
-    noCertWorkers,
+    noCertWorkers: finalNoCertWorkers,
     totalParsed,
     totalSkipped,
   };
