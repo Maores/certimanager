@@ -51,7 +51,7 @@ const WORKER_SHEETS: Record<string, SheetConfig> = {
   "מאושרי כביש 6": { certTypes: ["כביש 6"], defaultStatus: "פעיל" },
   "PFI": { certTypes: ["PFI"], defaultStatus: "פעיל" },
   "פעיל - ללא הסמכה מוגדרת": { certTypes: [], defaultStatus: "פעיל" },
-  "חלת - מחלה": { certTypes: [], defaultStatus: "מחלה" },
+  "חלת - מחלה": { certTypes: [], defaultStatus: 'חל"ת' },
   "משימות להמשך טיפול": { certTypes: [], defaultStatus: "לא פעיל" },
   "ללא הסמכה - לבירור": { certTypes: [], defaultStatus: "ללא הסמכה - לבירור" },
 };
