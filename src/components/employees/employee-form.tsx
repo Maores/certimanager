@@ -120,6 +120,7 @@ export function EmployeeForm({ employee, action }: EmployeeFormProps) {
             <option value="חלת">חל&quot;ת</option>
             <option value="מחלה">מחלה</option>
             <option value="לא פעיל">לא פעיל</option>
+            <option value="ללא הסמכה - לבירור">ללא הסמכה - לבירור</option>
           </select>
         </div>
       </div>

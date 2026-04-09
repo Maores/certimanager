@@ -40,21 +40,26 @@ export interface ParseResult {
 // --- Constants ---
 // NOTE: "כביש 6 + נת\"ע" must come BEFORE "כביש 6" to match the longer string first
 
-const WORKER_SHEETS: Record<string, string | null> = {
-  "מאושרי נת״ע": "נת״ע",
-  "מאושרי כביש 6 + נת״ע": "כביש 6 + נת״ע",
-  "מאושרי כביש 6": "כביש 6",
-  "PFI": "PFI",
-  "פעיל - ללא הסמכה מוגדרת": null,
-  "חלת - מחלה": null,
-  "ללא הסמכה - לבירור": null,
+interface SheetConfig {
+  certTypes: string[];
+  defaultStatus: string;
+}
+
+const WORKER_SHEETS: Record<string, SheetConfig> = {
+  "מאושרי נת״ע": { certTypes: ["נת״ע"], defaultStatus: "פעיל" },
+  "מאושרי כביש 6 + נת״ע": { certTypes: ["נת״ע", "כביש 6"], defaultStatus: "פעיל" },
+  "מאושרי כביש 6": { certTypes: ["כביש 6"], defaultStatus: "פעיל" },
+  "PFI": { certTypes: ["PFI"], defaultStatus: "פעיל" },
+  "פעיל - ללא הסמכה מוגדרת": { certTypes: [], defaultStatus: "פעיל" },
+  "חלת - מחלה": { certTypes: [], defaultStatus: "מחלה" },
+  "משימות להמשך טיפול": { certTypes: [], defaultStatus: "לא פעיל" },
+  "ללא הסמכה - לבירור": { certTypes: [], defaultStatus: "ללא הסמכה - לבירור" },
 };
 
 const SKIP_SHEETS = [
   "ריכוז כל המשימות",
   "משימות לפי אחראי",
   "סיכום כללי",
-  "משימות להמשך טיפול",
 ];
 
 const STATUS_MAP: Record<string, string> = {
@@ -64,6 +69,7 @@ const STATUS_MAP: Record<string, string> = {
   'חל״ת': 'חל"ת',
   "מחלה": "מחלה",
   "לא פעיל": "לא פעיל",
+  "ללא הסמכה - לבירור": "ללא הסמכה - לבירור",
 };
 
 // --- Functions ---
@@ -72,12 +78,12 @@ export function normalizeEmployeeNumber(raw: string): string {
   return raw.toString().trim().replace(/[^a-zA-Z0-9]/g, "");
 }
 
-export function normalizeStatus(raw: string | undefined): { value: string; warning: boolean } {
-  if (!raw || !raw.trim() || raw.trim() === "-") return { value: "פעיל", warning: false };
+export function normalizeStatus(raw: string | undefined, defaultStatus = "פעיל"): { value: string; warning: boolean } {
+  if (!raw || !raw.trim() || raw.trim() === "-") return { value: defaultStatus, warning: false };
   const trimmed = raw.trim();
   const mapped = STATUS_MAP[trimmed];
   if (mapped) return { value: mapped, warning: false };
-  return { value: "פעיל", warning: true };
+  return { value: defaultStatus, warning: true };
 }
 
 function findHeaderRow(rows: any[][]): number {
@@ -107,8 +113,8 @@ export function parseExcel(buffer: ArrayBuffer): ParseResult {
     const matchedKey = Object.keys(WORKER_SHEETS).find(k => sheetName.includes(k));
     if (!matchedKey) continue;
 
-    const certTypeName = WORKER_SHEETS[matchedKey];
-    if (certTypeName) certTypeNames.add(certTypeName);
+    const sheetConfig = WORKER_SHEETS[matchedKey];
+    for (const ct of sheetConfig.certTypes) certTypeNames.add(ct);
 
     const worksheet = workbook.Sheets[sheetName];
 
@@ -169,7 +175,7 @@ export function parseExcel(buffer: ArrayBuffer): ParseResult {
       }
 
       const statusRaw = statusCol >= 0 ? String(row[statusCol] || "").trim() : "";
-      const { value: status, warning: statusWarning } = normalizeStatus(statusRaw);
+      const { value: status, warning: statusWarning } = normalizeStatus(statusRaw, sheetConfig.defaultStatus);
 
       const notesRaw = notesCol >= 0 ? String(row[notesCol] || "").trim() : "";
       const notes = notesRaw === "-" ? "" : notesRaw;
@@ -186,7 +192,7 @@ export function parseExcel(buffer: ArrayBuffer): ParseResult {
         notes,
         responsible,
         sourceSheet: sheetName,
-        certTypeName,
+        certTypeName: sheetConfig.certTypes[0] ?? null,
       };
 
       parsedWorkers.push(worker);
@@ -194,8 +200,10 @@ export function parseExcel(buffer: ArrayBuffer): ParseResult {
 
       if (uniqueWorkers.has(empNum)) {
         const existing = uniqueWorkers.get(empNum)!;
-        if (certTypeName && !existing.certTypeNames.includes(certTypeName)) {
-          existing.certTypeNames.push(certTypeName);
+        for (const ct of sheetConfig.certTypes) {
+          if (!existing.certTypeNames.includes(ct)) {
+            existing.certTypeNames.push(ct);
+          }
         }
         if (notes && !existing.notes.includes(notes)) {
           existing.notes = existing.notes ? `${existing.notes}\n${notes}` : notes;
@@ -203,9 +211,9 @@ export function parseExcel(buffer: ArrayBuffer): ParseResult {
       } else {
         uniqueWorkers.set(empNum, {
           ...worker,
-          certTypeNames: certTypeName ? [certTypeName] : [],
+          certTypeNames: [...sheetConfig.certTypes],
         });
-        if (!certTypeName) {
+        if (sheetConfig.certTypes.length === 0) {
           noCertWorkers.push(worker);
         }
       }
@@ -214,7 +222,7 @@ export function parseExcel(buffer: ArrayBuffer): ParseResult {
     sheets.push({
       name: sheetName,
       isWorkerSheet: true,
-      certTypeName,
+      certTypeName: sheetConfig.certTypes[0] ?? null,
       workers: parsedWorkers,
       skippedRows,
     });
