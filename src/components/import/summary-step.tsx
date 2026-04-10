@@ -13,10 +13,11 @@ export function SummaryStep({ summary, onReset }: SummaryStepProps) {
 
   const stats = [
     { label: "עובדים נוצרו", value: summary.employeesCreated, color: "text-green-700" },
-    { label: "עובדים דולגו", value: summary.employeesSkipped, color: "text-gray-600" },
+    { label: "עובדים עודכנו", value: summary.employeesUpdated, color: "text-blue-700" },
     { label: "סוגי הסמכה נוצרו", value: summary.certTypesCreated, color: "text-blue-700" },
     { label: "הסמכות נוצרו", value: summary.certificationsCreated, color: "text-green-700" },
     { label: "הסמכות דולגו", value: summary.certificationsSkipped, color: "text-gray-600" },
+    { label: "משימות נוצרו", value: summary.tasksCreated, color: "text-green-700" },
   ];
 
   return (
@@ -30,7 +31,7 @@ export function SummaryStep({ summary, onReset }: SummaryStepProps) {
       </div>
 
       {/* Stats cards */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {stats.map((stat) => (
           <div
             key={stat.label}

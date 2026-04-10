@@ -42,10 +42,11 @@ export interface ImportResponse {
   error?: string;
   summary?: {
     employeesCreated: number;
-    employeesSkipped: number;
+    employeesUpdated: number;
     certTypesCreated: number;
     certificationsCreated: number;
     certificationsSkipped: number;
+    tasksCreated: number;
     errors: string[];
   };
 }
@@ -158,9 +159,10 @@ export async function executeBulkImport(
   const errors: string[] = [];
   let certTypesCreated = 0;
   let employeesCreated = 0;
-  let employeesSkipped = 0;
+  let employeesUpdated = 0;
   let certificationsCreated = 0;
   let certificationsSkipped = 0;
+  let tasksCreated = 0;
 
   try {
     // Step 1: Upsert cert types
@@ -195,7 +197,7 @@ export async function executeBulkImport(
       }
     }
 
-    // Step 2: Insert new employees in batches of 50
+    // Step 2: Upsert employees in batches of 50
     // Re-verify which employees exist server-side (don't trust client existsInDb)
     const allEmpNumbers = workers.map(w => w.employeeNumber);
     const { data: currentExisting } = allEmpNumbers.length > 0
@@ -207,10 +209,9 @@ export async function executeBulkImport(
       : { data: [] };
 
     const existingEmpSet = new Set((currentExisting || []).map(e => e.employee_number));
-    const newWorkers = workers.filter(w => !existingEmpSet.has(w.employeeNumber));
 
-    for (let i = 0; i < newWorkers.length; i += 50) {
-      const batch = newWorkers.slice(i, i + 50).map(w => ({
+    for (let i = 0; i < workers.length; i += 50) {
+      const batch = workers.slice(i, i + 50).map(w => ({
         manager_id: user.id,
         first_name: w.firstName,
         last_name: w.lastName,
@@ -219,14 +220,12 @@ export async function executeBulkImport(
         phone: "",
         email: "",
         status: w.status,
-        notes: w.responsible
-          ? (w.notes ? `${w.notes}\nאחראי: ${w.responsible}` : `אחראי: ${w.responsible}`)
-          : (w.notes || null),
+        notes: w.notes || null,
       }));
 
       const { error } = await supabase
         .from("employees")
-        .upsert(batch, { onConflict: "manager_id,employee_number", ignoreDuplicates: true });
+        .upsert(batch, { onConflict: "manager_id,employee_number" });
 
       if (error) {
         errors.push(`שגיאה בייבוא עובדים (אצווה ${Math.floor(i / 50) + 1}): ${error.message}`);
@@ -244,8 +243,62 @@ export async function executeBulkImport(
       employeeMap.set(emp.employee_number, emp.id);
     }
 
-    employeesCreated = newWorkers.filter(w => employeeMap.has(w.employeeNumber)).length;
-    employeesSkipped = workers.length - newWorkers.length;
+    employeesCreated = workers.filter(w => !existingEmpSet.has(w.employeeNumber) && employeeMap.has(w.employeeNumber)).length;
+    employeesUpdated = workers.filter(w => existingEmpSet.has(w.employeeNumber) && employeeMap.has(w.employeeNumber)).length;
+
+    // Step 2b: Create employee_tasks for workers with notes or responsible data
+    const taskRows: { employee_id: string; description: string; responsible: string | null; status: string }[] = [];
+    const taskWorkers = workers.filter(w => w.notes && w.notes.trim() !== "");
+
+    if (taskWorkers.length > 0) {
+      // Fetch existing tasks for dedup
+      const taskEmpIds = taskWorkers
+        .map(w => employeeMap.get(w.employeeNumber))
+        .filter((id): id is string => !!id);
+
+      const existingTaskSet = new Set<string>();
+      if (taskEmpIds.length > 0) {
+        const { data: existingTasks } = await supabase
+          .from("employee_tasks")
+          .select("employee_id, description")
+          .in("employee_id", taskEmpIds);
+
+        for (const t of existingTasks || []) {
+          existingTaskSet.add(`${t.employee_id}:${t.description}`);
+        }
+      }
+
+      for (const w of taskWorkers) {
+        const empId = employeeMap.get(w.employeeNumber);
+        if (!empId) continue;
+
+        const description = w.notes.trim();
+        const key = `${empId}:${description}`;
+        if (existingTaskSet.has(key)) continue;
+
+        taskRows.push({
+          employee_id: empId,
+          description,
+          responsible: w.responsible || null,
+          status: "פתוח",
+        });
+        existingTaskSet.add(key);
+      }
+
+      for (let i = 0; i < taskRows.length; i += 50) {
+        const batch = taskRows.slice(i, i + 50);
+        const { data: inserted, error } = await supabase
+          .from("employee_tasks")
+          .insert(batch)
+          .select("id");
+
+        if (error) {
+          errors.push(`שגיאה ביצירת משימות (אצווה ${Math.floor(i / 50) + 1}): ${error.message}`);
+        } else {
+          tasksCreated += inserted?.length || 0;
+        }
+      }
+    }
 
     // Step 3: Create certifications (scoped dedup)
     const existingCertSet = new Set<string>();
@@ -311,10 +364,11 @@ export async function executeBulkImport(
       success: true,
       summary: {
         employeesCreated,
-        employeesSkipped,
+        employeesUpdated,
         certTypesCreated,
         certificationsCreated,
         certificationsSkipped,
+        tasksCreated,
         errors,
       },
     };

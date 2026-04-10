@@ -9,6 +9,7 @@ import {
   Tag,
   FileUp,
   BarChart3,
+  ClipboardList,
   type LucideIcon,
 } from "lucide-react";
 
@@ -29,6 +30,7 @@ const iconMap: Record<string, LucideIcon> = {
   "cert-types": Tag,
   import: FileUp,
   reports: BarChart3,
+  tasks: ClipboardList,
 };
 
 function getIcon(href: string): LucideIcon {
