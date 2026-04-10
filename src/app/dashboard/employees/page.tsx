@@ -11,9 +11,9 @@ import { guestGetEmployees, guestGetDepartments } from "@/lib/guest-store";
 export default async function EmployeesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; dept?: string }>;
+  searchParams: Promise<{ q?: string; dept?: string; status?: string }>;
 }) {
-  const { q, dept } = await searchParams;
+  const { q, dept, status: statusFilter } = await searchParams;
   const guestSid = await getGuestSessionId();
 
   let departments: string[];
@@ -22,6 +22,9 @@ export default async function EmployeesPage({
   if (guestSid) {
     departments = guestGetDepartments(guestSid);
     employees = guestGetEmployees(guestSid, q, dept);
+    if (statusFilter) {
+      employees = employees.filter((e) => e.status === statusFilter);
+    }
   } else {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -54,6 +57,10 @@ export default async function EmployeesPage({
 
     if (dept) {
       query = query.eq("department", dept);
+    }
+
+    if (statusFilter) {
+      query = query.eq("status", statusFilter);
     }
 
     const { data } = await query;
@@ -102,6 +109,18 @@ export default async function EmployeesPage({
               {d}
             </option>
           ))}
+        </AutoSubmitSelect>
+        <AutoSubmitSelect
+          name="status"
+          defaultValue={statusFilter ?? ""}
+          className="rounded-lg border border-border bg-white px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-ring cursor-pointer sm:w-48"
+        >
+          <option value="">כל הסטטוסים</option>
+          <option value="פעיל">פעיל</option>
+          <option value="לא פעיל">לא פעיל</option>
+          <option value={'חל"ת'}>{'חל"ת'}</option>
+          <option value="מחלה">מחלה</option>
+          <option value="ללא הסמכה - לבירור">ללא הסמכה - לבירור</option>
         </AutoSubmitSelect>
       </form>
 

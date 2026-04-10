@@ -47,3 +47,10 @@ next-env.d.ts
 # Claude Code / Octopus local state
 .claude/
 .claude-octopus/
+
+# One-off scripts with credentials
+scripts/*.mjs
+
+# Sensitive files
+cookies.txt
+skills-lock.json

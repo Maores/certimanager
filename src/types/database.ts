@@ -41,8 +41,25 @@ export interface Certification {
   updated_at: string;
 }
 
+export interface EmployeeTask {
+  id: string;
+  employee_id: string;
+  description: string;
+  responsible: string | null;
+  status: TaskStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export type TaskStatus = "פתוח" | "בטיפול" | "הושלם";
+
 export interface EmployeeWithCerts extends Employee {
   certifications: (Certification & { cert_type: CertType })[];
+}
+
+export interface EmployeeWithCertsAndTasks extends Employee {
+  certifications: (Certification & { cert_type: CertType })[];
+  employee_tasks: EmployeeTask[];
 }
 
 export type CertStatus = "valid" | "expiring_soon" | "expired" | "unknown";

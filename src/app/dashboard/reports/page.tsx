@@ -12,6 +12,7 @@ import {
   Clock,
   Building2,
   UserX,
+  Activity,
 } from "lucide-react";
 
 export default async function ReportsPage() {
@@ -44,7 +45,7 @@ export default async function ReportsPage() {
       { data: certifications },
       { data: certTypes },
     ] = await Promise.all([
-      supabase.from("employees").select("id, first_name, last_name, department").eq("manager_id", user.id),
+      supabase.from("employees").select("id, first_name, last_name, department, status").eq("manager_id", user.id),
       supabase
         .from("certifications")
         .select(
@@ -125,6 +126,20 @@ export default async function ReportsPage() {
       expired: deptExpired,
     };
   });
+
+  // ── Employee status breakdown ──
+  const statusLabels = ["פעיל", "לא פעיל", "ללא הסמכה - לבירור", "חל\"ת", "מחלה"] as const;
+  const statusColorMap: Record<string, { bg: string; text: string; dot: string; barBg: string }> = {
+    "פעיל": { bg: "bg-green-50", text: "text-green-700", dot: "bg-green-500", barBg: "bg-green-500" },
+    "לא פעיל": { bg: "bg-gray-100", text: "text-gray-600", dot: "bg-gray-400", barBg: "bg-gray-400" },
+    "חל\"ת": { bg: "bg-yellow-50", text: "text-yellow-700", dot: "bg-yellow-500", barBg: "bg-yellow-500" },
+    "מחלה": { bg: "bg-orange-50", text: "text-orange-700", dot: "bg-orange-500", barBg: "bg-orange-500" },
+    "ללא הסמכה - לבירור": { bg: "bg-red-50", text: "text-red-700", dot: "bg-red-500", barBg: "bg-red-500" },
+  };
+  const statusCounts = statusLabels.map((label) => ({
+    label,
+    count: allEmployees.filter((e) => e.status === label).length,
+  })).filter((s) => s.count > 0);
 
   // ── Employees missing certifications ──
   const employeesWithCertCount = allEmployees.map((emp) => {
@@ -273,7 +288,45 @@ export default async function ReportsPage() {
         )}
       </section>
 
-      {/* ── Section D: Employees Missing Certifications ── */}
+      {/* ── Section D: Employee Status Breakdown ── */}
+      <section>
+        <h2 className="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4 flex items-center gap-2">
+          <Activity className="h-5 w-5 text-primary" />
+          פילוח לפי סטטוס עובד
+        </h2>
+        {statusCounts.length === 0 ? (
+          <EmptyCard message="אין נתוני סטטוס להצגה" />
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+            {statusCounts.map((s) => {
+              const colors = statusColorMap[s.label] || statusColorMap["לא פעיל"];
+              const pct = totalEmployees > 0 ? Math.round((s.count / totalEmployees) * 100) : 0;
+              return (
+                <div
+                  key={s.label}
+                  className={`rounded-xl p-4 border border-border bg-card`}
+                  style={{ boxShadow: "var(--shadow-xs)" }}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className={`w-2.5 h-2.5 rounded-full ${colors.dot}`} />
+                    <span className={`text-sm font-medium ${colors.text}`}>{s.label}</span>
+                  </div>
+                  <p className={`text-2xl font-bold ${colors.text} ltr-nums`}>{s.count}</p>
+                  <div className="mt-2 w-full bg-gray-100 rounded-full h-1.5">
+                    <div
+                      className={`h-1.5 rounded-full ${colors.barBg}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted mt-1 ltr-nums">{pct}%</p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* ── Section E: Employees Missing Certifications ── */}
       <section>
         <h2 className="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4 flex items-center gap-2">
           <UserX className="h-5 w-5 text-danger" />

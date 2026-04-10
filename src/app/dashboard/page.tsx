@@ -4,7 +4,7 @@ import { guestGetEmployeeCount, getGuestData } from "@/lib/guest-store";
 import { getCertStatus, formatDateHe } from "@/types/database";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Users, CheckCircle, AlertTriangle, XCircle } from "lucide-react";
+import { Users, CheckCircle, AlertTriangle, XCircle, UserCheck, UserX } from "lucide-react";
 import type { ElementType } from "react";
 
 const colorMap: Record<
@@ -41,11 +41,15 @@ export default async function DashboardPage() {
   const guestSid = await getGuestSessionId();
 
   let employeeCountVal: number;
+  let activeEmployeeCount: number;
+  let inactiveEmployeeCount: number;
   let certs: any[];
 
   if (guestSid) {
     employeeCountVal = guestGetEmployeeCount(guestSid);
     const data = getGuestData(guestSid);
+    activeEmployeeCount = data.employees.filter((e: any) => e.status === "פעיל").length;
+    inactiveEmployeeCount = employeeCountVal - activeEmployeeCount;
     certs = data.certifications.map((cert: any) => {
       const emp = data.employees.find((e: any) => e.id === cert.employee_id);
       const ct = data.certTypes.find((t: any) => t.id === cert.cert_type_id);
@@ -60,11 +64,14 @@ export default async function DashboardPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) redirect("/login");
 
-    const { count } = await supabase
+    const { data: allEmployees } = await supabase
       .from("employees")
-      .select("*", { count: "exact", head: true })
+      .select("id, status")
       .eq("manager_id", user.id);
-    employeeCountVal = count || 0;
+    const empList = allEmployees || [];
+    employeeCountVal = empList.length;
+    activeEmployeeCount = empList.filter((e) => e.status === "פעיל").length;
+    inactiveEmployeeCount = employeeCountVal - activeEmployeeCount;
     const { data: allCerts } = await supabase
       .from("certifications")
       .select("id, expiry_date, employee_id, cert_type_id, employees!inner(first_name, last_name, manager_id), cert_types(name)")
@@ -96,10 +103,12 @@ export default async function DashboardPage() {
   }
 
   const stats = [
-    { label: "סה\"כ עובדים", value: employeeCountVal, color: "blue" },
-    { label: "הסמכות בתוקף", value: validCount, color: "green" },
-    { label: "פג תוקף בקרוב", value: expiringSoonCount, color: "yellow" },
-    { label: "פג תוקף", value: expiredCount, color: "red" },
+    { label: "סה\"כ עובדים", value: employeeCountVal, color: "blue", icon: Users },
+    { label: "עובדים פעילים", value: activeEmployeeCount, color: "green", icon: UserCheck },
+    { label: "לא פעילים", value: inactiveEmployeeCount, color: "red", icon: UserX },
+    { label: "הסמכות בתוקף", value: validCount, color: "green", icon: CheckCircle },
+    { label: "פג תוקף בקרוב", value: expiringSoonCount, color: "yellow", icon: AlertTriangle },
+    { label: "פג תוקף", value: expiredCount, color: "red", icon: XCircle },
   ];
 
   return (
@@ -114,10 +123,10 @@ export default async function DashboardPage() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
         {stats.map((stat) => {
           const c = colorMap[stat.color];
-          const Icon = c.icon;
+          const Icon = stat.icon;
           return (
             <div
               key={stat.label}

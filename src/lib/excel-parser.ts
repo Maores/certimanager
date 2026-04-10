@@ -72,6 +72,49 @@ const STATUS_MAP: Record<string, string> = {
   "ללא הסמכה - לבירור": "ללא הסמכה - לבירור",
 };
 
+// --- Cert type normalization ---
+
+/** Status values that sometimes appear in the cert-type column — filter these out */
+const STATUS_VALUES_AS_CERT = new Set(["חלת", "מחלה", "פעיל", "לא פעיל", 'חל"ת', "חל״ת"]);
+
+/** Canonical cert type names */
+const CANONICAL_CERT_TYPES = ["נת״ע", "כביש 6", "PFI"] as const;
+
+/**
+ * Normalize a raw cert-type string from the "הסמכה" column into canonical names.
+ * Returns an array because some values map to multiple cert types
+ * (e.g. "כביש 6 ונת״ע" → ["כביש 6", "נת״ע"]).
+ */
+export function normalizeCertTypeName(raw: string): string[] {
+  if (!raw) return [];
+  let s = raw.trim();
+  if (!s || s === "-") return [];
+
+  // Filter out status values that were mistakenly placed in the cert column
+  if (STATUS_VALUES_AS_CERT.has(s)) return [];
+
+  // Case-insensitive match for PFI
+  if (/^pfi$/i.test(s)) return ["PFI"];
+
+  // Normalize all Hebrew gershayim variants for נת״ע:
+  //   נתי"ע  נת"ע  נת״ע  נתע  מאושר נתע  → נת״ע
+  const nativeNormalized = s
+    .replace(/["""״]/g, "״") // unify quote marks
+    .replace(/מאושר\s*/g, "") // strip "מאושר" prefix
+    .trim();
+
+  // Check for dual cert: "כביש 6 ונת״ע" / "נת״ע כביש 6" / "כביש 6 נת״ע" (any order, optional ו)
+  const hasKvish6 = /כביש\s*6/.test(nativeNormalized);
+  const hasNataa = /נת[י]?״?ע/.test(nativeNormalized);
+
+  if (hasKvish6 && hasNataa) return ["כביש 6", "נת״ע"];
+  if (hasKvish6) return ["כביש 6"];
+  if (hasNataa) return ["נת״ע"];
+
+  // If no pattern matched, return the trimmed original as-is (unknown cert type)
+  return s ? [s] : [];
+}
+
 // --- Functions ---
 
 export function normalizeEmployeeNumber(raw: string): string {
@@ -143,6 +186,7 @@ export function parseExcel(buffer: ArrayBuffer): ParseResult {
     const lastNameCol = colIdx(["שם משפחה"]);
     const firstNameCol = colIdx(["שם פרטי"]);
     const statusCol = colIdx(["סטטוס", "סטאטוס"]);
+    const certNameCol = colIdx(["הסמכה"]);
     const notesCol = colIdx(["הערות", "משימות", "הערה"]);
     const responsibleCol = colIdx(["אחראי"]);
 
@@ -182,6 +226,14 @@ export function parseExcel(buffer: ArrayBuffer): ParseResult {
       const responsibleRaw = responsibleCol >= 0 ? String(row[responsibleCol] || "").trim() : "";
       const responsible = responsibleRaw === "-" ? "" : responsibleRaw;
 
+      // Determine cert types: prefer per-row "הסמכה" column, fall back to sheet-level
+      const rowCertRaw = certNameCol >= 0 ? String(row[certNameCol] || "").trim() : "";
+      const rowCertTypes = normalizeCertTypeName(rowCertRaw);
+      const effectiveCertTypes = rowCertTypes.length > 0 ? rowCertTypes : sheetConfig.certTypes;
+
+      // Add any discovered cert type names to the global set
+      for (const ct of effectiveCertTypes) certTypeNames.add(ct);
+
       const worker: ParsedWorker = {
         employeeNumber: empNum,
         rawEmployeeNumber: empNumRaw,
@@ -192,7 +244,7 @@ export function parseExcel(buffer: ArrayBuffer): ParseResult {
         notes,
         responsible,
         sourceSheet: sheetName,
-        certTypeName: sheetConfig.certTypes[0] ?? null,
+        certTypeName: effectiveCertTypes[0] ?? null,
       };
 
       parsedWorkers.push(worker);
@@ -200,7 +252,7 @@ export function parseExcel(buffer: ArrayBuffer): ParseResult {
 
       if (uniqueWorkers.has(empNum)) {
         const existing = uniqueWorkers.get(empNum)!;
-        for (const ct of sheetConfig.certTypes) {
+        for (const ct of effectiveCertTypes) {
           if (!existing.certTypeNames.includes(ct)) {
             existing.certTypeNames.push(ct);
           }
@@ -211,9 +263,9 @@ export function parseExcel(buffer: ArrayBuffer): ParseResult {
       } else {
         uniqueWorkers.set(empNum, {
           ...worker,
-          certTypeNames: [...sheetConfig.certTypes],
+          certTypeNames: [...effectiveCertTypes],
         });
-        if (sheetConfig.certTypes.length === 0) {
+        if (effectiveCertTypes.length === 0) {
           noCertWorkers.push(worker);
         }
       }
