@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Trash2, CheckSquare, Square, MinusSquare } from "lucide-react";
 import type { Employee } from "@/types/database";
 import { deleteEmployees } from "@/app/dashboard/employees/actions";
@@ -10,13 +10,27 @@ import { ConfirmDeleteDialog } from "./confirm-delete-dialog";
 
 interface EmployeeListClientProps {
   employees: Employee[];
+  page?: number;
+  totalPages?: number;
 }
 
-export function EmployeeListClient({ employees }: EmployeeListClientProps) {
+export function EmployeeListClient({ employees, page = 1, totalPages = 1 }: EmployeeListClientProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showDialog, setShowDialog] = useState(false);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  function pageHref(p: number) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (p <= 1) {
+      params.delete("page");
+    } else {
+      params.set("page", String(p));
+    }
+    const qs = params.toString();
+    return qs ? `?${qs}` : "?";
+  }
 
   const allSelected = employees.length > 0 && selectedIds.size === employees.length;
   const someSelected = selectedIds.size > 0 && selectedIds.size < employees.length;
@@ -63,14 +77,18 @@ export function EmployeeListClient({ employees }: EmployeeListClientProps) {
         }}
       >
         <table className="min-w-full" style={{ borderColor: "var(--border)" }}>
+          <caption className="sr-only">רשימת עובדים</caption>
           <thead style={{ backgroundColor: "var(--primary-light)" }}>
             <tr>
-              <th className="w-12 px-4 py-3">
+              <th scope="col" className="w-12 px-4 py-3">
                 <button
                   type="button"
                   onClick={toggleAll}
                   className="flex items-center justify-center cursor-pointer"
                   title={allSelected ? "בטל בחירת הכל" : "בחר הכל"}
+                  role="checkbox"
+                  aria-checked={someSelected ? "mixed" : allSelected}
+                  aria-label={allSelected ? "בטל בחירת הכל" : "בחר הכל"}
                 >
                   {allSelected ? (
                     <CheckSquare className="h-5 w-5 text-primary" />
@@ -81,11 +99,11 @@ export function EmployeeListClient({ employees }: EmployeeListClientProps) {
                   )}
                 </button>
               </th>
-              <th className="px-6 py-3 text-right text-sm font-medium text-muted">שם</th>
-              <th className="px-6 py-3 text-right text-sm font-medium text-muted">מספר זהות/דרכון</th>
-              <th className="px-6 py-3 text-right text-sm font-medium text-muted">מחלקה</th>
-              <th className="px-6 py-3 text-right text-sm font-medium text-muted">סטטוס</th>
-              <th className="px-6 py-3 text-right text-sm font-medium text-muted">טלפון</th>
+              <th scope="col" className="px-6 py-3 text-right text-sm font-medium text-muted">שם</th>
+              <th scope="col" className="px-6 py-3 text-right text-sm font-medium text-muted">מספר זהות/דרכון</th>
+              <th scope="col" className="px-6 py-3 text-right text-sm font-medium text-muted">מחלקה</th>
+              <th scope="col" className="px-6 py-3 text-right text-sm font-medium text-muted">סטטוס</th>
+              <th scope="col" className="px-6 py-3 text-right text-sm font-medium text-muted">טלפון</th>
             </tr>
           </thead>
           <tbody className="divide-y" style={{ borderColor: "var(--border)" }}>
@@ -104,6 +122,9 @@ export function EmployeeListClient({ employees }: EmployeeListClientProps) {
                       type="button"
                       onClick={() => toggleOne(employee.id)}
                       className="flex items-center justify-center cursor-pointer"
+                      role="checkbox"
+                      aria-checked={isSelected}
+                      aria-label={`בחר ${employee.first_name} ${employee.last_name}`}
                     >
                       {isSelected ? (
                         <CheckSquare className="h-5 w-5 text-primary" />
@@ -158,6 +179,9 @@ export function EmployeeListClient({ employees }: EmployeeListClientProps) {
                 type="button"
                 onClick={() => toggleOne(employee.id)}
                 className="absolute top-3 left-3 cursor-pointer"
+                role="checkbox"
+                aria-checked={isSelected}
+                aria-label={`בחר ${employee.first_name} ${employee.last_name}`}
               >
                 {isSelected ? (
                   <CheckSquare className="h-5 w-5 text-primary" />
@@ -241,6 +265,33 @@ export function EmployeeListClient({ employees }: EmployeeListClientProps) {
         onConfirm={handleDelete}
         onCancel={() => !isPending && setShowDialog(false)}
       />
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+          <span className="text-sm text-muted-foreground">
+            עמוד {page} מתוך {totalPages}
+          </span>
+          <div className="flex gap-2">
+            {page > 1 && (
+              <Link
+                href={pageHref(page - 1)}
+                className="px-3 py-1.5 text-sm rounded-lg border border-border hover:bg-gray-50 transition-colors"
+              >
+                הקודם
+              </Link>
+            )}
+            {page < totalPages && (
+              <Link
+                href={pageHref(page + 1)}
+                className="px-3 py-1.5 text-sm rounded-lg border border-border hover:bg-gray-50 transition-colors"
+              >
+                הבא
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -259,7 +310,7 @@ function StatusBadge({ status }: { status: string }) {
     <span
       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${colors.bg} ${colors.text}`}
     >
-      <span className={`w-1.5 h-1.5 rounded-full ${colors.dot}`} />
+      <span className={`w-1.5 h-1.5 rounded-full ${colors.dot}`} aria-hidden="true" />
       {status}
     </span>
   );

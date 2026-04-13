@@ -12,17 +12,24 @@ import {
 export async function createCertType(formData: FormData) {
   const guestSid = await getGuestSessionId();
   if (guestSid) {
-    const name = formData.get("name") as string;
+    const name = (formData.get("name") as string || "").trim();
     const default_validity_months = parseInt(
       formData.get("default_validity_months") as string,
       10
     );
     const description = formData.get("description") as string | null;
 
+    if (!name) {
+      throw new Error("שם סוג ההסמכה הוא שדה חובה");
+    }
+    if (isNaN(default_validity_months) || default_validity_months < 1) {
+      throw new Error("תוקף ברירת מחדל חייב להיות מספר חיובי");
+    }
+
     guestCreateCertType(guestSid, {
       name,
       default_validity_months,
-      description: description || null,
+      description: description?.trim() || null,
     });
     revalidatePath("/dashboard/cert-types");
     return;

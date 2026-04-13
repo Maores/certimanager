@@ -240,21 +240,22 @@ export default async function ReportsPage() {
             style={{ boxShadow: "var(--shadow-sm)" }}
           >
             <table className="w-full text-sm min-w-[600px]">
+              <caption className="sr-only">פילוח הסמכות לפי מחלקה</caption>
               <thead>
                 <tr className="border-b border-border bg-primary-light">
-                  <th className="text-right px-4 sm:px-5 py-3 font-medium text-muted">
+                  <th scope="col" className="text-right px-4 sm:px-5 py-3 font-medium text-muted">
                     מחלקה
                   </th>
-                  <th className="text-right px-4 sm:px-5 py-3 font-medium text-muted">
+                  <th scope="col" className="text-right px-4 sm:px-5 py-3 font-medium text-muted">
                     עובדים
                   </th>
-                  <th className="text-right px-4 sm:px-5 py-3 font-medium text-muted">
+                  <th scope="col" className="text-right px-4 sm:px-5 py-3 font-medium text-muted">
                     בתוקף
                   </th>
-                  <th className="text-right px-4 sm:px-5 py-3 font-medium text-muted">
+                  <th scope="col" className="text-right px-4 sm:px-5 py-3 font-medium text-muted">
                     פג בקרוב
                   </th>
-                  <th className="text-right px-4 sm:px-5 py-3 font-medium text-muted">
+                  <th scope="col" className="text-right px-4 sm:px-5 py-3 font-medium text-muted">
                     פג תוקף
                   </th>
                 </tr>

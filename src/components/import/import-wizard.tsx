@@ -68,13 +68,18 @@ export function ImportWizard() {
   return (
     <div className="space-y-6">
       {/* Step indicator */}
-      <div className="flex items-center justify-center gap-2">
+      <ol aria-label="שלבי ייבוא" className="flex items-center justify-center gap-2">
         {STEPS.map((s, idx) => {
           const isCompleted = idx < currentStepIndex;
           const isActive = idx === currentStepIndex;
 
           return (
-            <div key={s.key} className="flex items-center gap-2">
+            <li
+              key={s.key}
+              aria-current={isActive ? "step" : undefined}
+              aria-label={`שלב ${idx + 1}: ${s.label}${isCompleted ? " (הושלם)" : ""}`}
+              className="flex items-center gap-2"
+            >
               {idx > 0 && (
                 <div
                   className={`h-px w-8 sm:w-12 ${
@@ -102,10 +107,10 @@ export function ImportWizard() {
                   {s.label}
                 </span>
               </div>
-            </div>
+          </li>
           );
         })}
-      </div>
+      </ol>
 
       {/* Import error */}
       {importError && (

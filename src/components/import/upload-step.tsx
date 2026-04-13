@@ -73,11 +73,20 @@ export function UploadStep({ onParsed }: UploadStepProps) {
   return (
     <div className="space-y-4">
       <div
+        role="button"
+        tabIndex={0}
+        aria-label="העלאת קובץ Excel"
         onClick={() => inputRef.current?.click()}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            inputRef.current?.click();
+          }
+        }}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
-        className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center transition-colors ${
+        className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 text-center transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary ${
           dragOver
             ? "border-blue-500 bg-blue-50"
             : "border-gray-300 hover:border-blue-400 hover:bg-gray-50"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 interface FileViewerProps {
   /** The signed URL or data URL for the file */
@@ -20,6 +20,8 @@ export function FileThumbnail({
   thumbnailClass = "w-10 h-10",
 }: FileViewerProps) {
   const [open, setOpen] = useState(false);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -32,6 +34,33 @@ export function FileThumbnail({
     if (open) {
       document.addEventListener("keydown", handleKeyDown);
       document.body.style.overflow = "hidden";
+      closeRef.current?.focus();
+
+      const overlay = overlayRef.current;
+      if (!overlay) return;
+
+      function handleTab(e: KeyboardEvent) {
+        if (e.key !== "Tab") return;
+        const focusable = overlay!.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+
+      overlay.addEventListener("keydown", handleTab);
+      return () => {
+        document.removeEventListener("keydown", handleKeyDown);
+        document.body.style.overflow = "";
+        overlay.removeEventListener("keydown", handleTab);
+      };
     }
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
@@ -79,13 +108,19 @@ export function FileThumbnail({
       {/* Lightbox overlay */}
       {open && (
         <div
+          ref={overlayRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label="תצוגת קובץ"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
           onClick={() => setOpen(false)}
         >
           {/* Close button */}
           <button
+            ref={closeRef}
             type="button"
             onClick={() => setOpen(false)}
+            aria-label="סגור"
             className="absolute top-4 left-4 z-10 rounded-full bg-white/90 p-2 shadow-lg hover:bg-white transition-colors"
           >
             <svg

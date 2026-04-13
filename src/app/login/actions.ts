@@ -17,7 +17,7 @@ export async function login(formData: FormData) {
   });
 
   if (error) {
-    return { error: "אימייל או סיסמה שגויים" };
+    return { error: "אימייל או סיסמה שגויים", email: email };
   }
 
   redirect("/dashboard");

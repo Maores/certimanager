@@ -97,6 +97,9 @@ export function guestGetEmployee(sid: string, id: string): Employee | null {
 
 export function guestCreateEmployee(sid: string, emp: Omit<Employee, "id" | "manager_id" | "created_at" | "updated_at">): Employee {
   const data = getGuestData(sid);
+  if (data.employees.some(e => e.employee_number === emp.employee_number)) {
+    throw new Error("עובד עם מספר זהות זה כבר קיים");
+  }
   const now = new Date().toISOString();
   const newEmp: Employee = {
     ...emp,
@@ -152,6 +155,9 @@ export function guestGetCertType(sid: string, id: string): CertType | null {
 
 export function guestCreateCertType(sid: string, ct: Omit<CertType, "id" | "manager_id">): CertType {
   const data = getGuestData(sid);
+  if (data.certTypes.some(c => c.name === ct.name)) {
+    throw new Error("סוג הסמכה בשם זה כבר קיים");
+  }
   const newCt: CertType = { ...ct, id: `g-ct-${Date.now()}`, manager_id: "guest" };
   data.certTypes.push(newCt);
   return newCt;

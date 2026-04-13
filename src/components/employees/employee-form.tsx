@@ -44,13 +44,14 @@ export function EmployeeForm({ employee, action }: EmployeeFormProps) {
             htmlFor="first_name"
             className="mb-1.5 block text-sm font-medium text-foreground"
           >
-            שם פרטי
+            שם פרטי <span className="text-danger">*</span>
           </label>
           <input
             type="text"
             id="first_name"
             name="first_name"
             required
+            maxLength={50}
             defaultValue={employee?.first_name ?? ""}
             className={inputClasses}
           />
@@ -62,13 +63,14 @@ export function EmployeeForm({ employee, action }: EmployeeFormProps) {
             htmlFor="last_name"
             className="mb-1.5 block text-sm font-medium text-foreground"
           >
-            שם משפחה
+            שם משפחה <span className="text-danger">*</span>
           </label>
           <input
             type="text"
             id="last_name"
             name="last_name"
             required
+            maxLength={50}
             defaultValue={employee?.last_name ?? ""}
             className={inputClasses}
           />
@@ -81,13 +83,14 @@ export function EmployeeForm({ employee, action }: EmployeeFormProps) {
           htmlFor="employee_number"
           className="mb-1.5 block text-sm font-medium text-foreground"
         >
-          מספר זהות/דרכון
+          מספר זהות/דרכון <span className="text-danger">*</span>
         </label>
         <input
           type="text"
           id="employee_number"
           name="employee_number"
           required
+          maxLength={20}
           defaultValue={employee?.employee_number ?? ""}
           className={inputClasses}
         />
@@ -106,6 +109,7 @@ export function EmployeeForm({ employee, action }: EmployeeFormProps) {
             type="text"
             id="department"
             name="department"
+            maxLength={50}
             defaultValue={employee?.department ?? ""}
             className={inputClasses}
           />
@@ -148,6 +152,7 @@ export function EmployeeForm({ employee, action }: EmployeeFormProps) {
             id="phone"
             name="phone"
             dir="ltr"
+            maxLength={20}
             defaultValue={employee?.phone ?? ""}
             className={`${inputClasses} text-left`}
           />
@@ -166,6 +171,7 @@ export function EmployeeForm({ employee, action }: EmployeeFormProps) {
             id="email"
             name="email"
             dir="ltr"
+            maxLength={100}
             defaultValue={employee?.email ?? ""}
             className={`${inputClasses} text-left`}
           />
@@ -184,6 +190,7 @@ export function EmployeeForm({ employee, action }: EmployeeFormProps) {
           id="notes"
           name="notes"
           rows={3}
+          maxLength={500}
           defaultValue={employee?.notes ?? ""}
           className={`${inputClasses} resize-none`}
         />

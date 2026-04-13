@@ -190,6 +190,15 @@ export default function CertificationForm({
 
     try {
       const formData = new FormData(e.currentTarget);
+
+      // Date sanity validation
+      const issueDateVal = formData.get("issue_date") as string;
+      if (issueDateVal && expiryDate && expiryDate < issueDateVal) {
+        setFormError("תאריך תפוגה חייב להיות אחרי תאריך הנפקה");
+        setSubmitting(false);
+        return;
+      }
+
       formData.set("image_url", imageUrl);
       formData.set("expiry_date", expiryDate);
 
@@ -218,7 +227,7 @@ export default function CertificationForm({
           htmlFor="employee_id"
           className="block text-sm font-medium text-foreground mb-1.5"
         >
-          עובד
+          עובד <span className="text-danger">*</span>
         </label>
         <select
           id="employee_id"
@@ -245,7 +254,7 @@ export default function CertificationForm({
           htmlFor="cert_type_id"
           className="block text-sm font-medium text-foreground mb-1.5"
         >
-          סוג הסמכה
+          סוג הסמכה <span className="text-danger">*</span>
         </label>
         <select
           id="cert_type_id"
@@ -347,7 +356,7 @@ export default function CertificationForm({
           )}
           <div className="flex-1">
             <label
-              className={`flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+              className={`flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer transition-colors focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary ${
                 uploading
                   ? "border-primary/40 bg-primary-light"
                   : "border-border bg-gray-50 hover:border-primary/40 hover:bg-primary-light/50"

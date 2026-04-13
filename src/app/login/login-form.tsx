@@ -6,7 +6,7 @@ import { Loader2, LogIn, UserCheck } from "lucide-react";
 
 export default function LoginForm() {
   const [state, formAction, isPending] = useActionState(
-    async (_prevState: { error: string } | null, formData: FormData) => {
+    async (_prevState: { error: string; email?: string } | null, formData: FormData) => {
       const result = await login(formData);
       return result ?? null;
     },
@@ -34,7 +34,9 @@ export default function LoginForm() {
             name="email"
             type="email"
             required
+            maxLength={100}
             autoComplete="email"
+            defaultValue={state?.email ?? ""}
             placeholder="name@company.com"
             dir="ltr"
             className="block w-full rounded-lg border border-border bg-white px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition-colors"
@@ -53,6 +55,7 @@ export default function LoginForm() {
             name="password"
             type="password"
             required
+            maxLength={128}
             autoComplete="current-password"
             placeholder="••••••••"
             dir="ltr"

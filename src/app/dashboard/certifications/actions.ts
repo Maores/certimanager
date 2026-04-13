@@ -36,6 +36,10 @@ export async function createCertification(formData: FormData) {
     const image_url = formData.get("image_url") as string | null;
     const notes = formData.get("notes") as string | null;
 
+    if (issue_date && expiry_date && expiry_date < issue_date) {
+      throw new Error("תאריך תפוגה חייב להיות אחרי תאריך הנפקה");
+    }
+
     // Check for existing valid certification with same employee_id + cert_type_id
     const guestData = getGuestData(guestSid);
     const today = new Date().toISOString().split("T")[0];
@@ -74,6 +78,10 @@ export async function createCertification(formData: FormData) {
   const expiry_date = formData.get("expiry_date") as string;
   const image_url = formData.get("image_url") as string | null;
   const notes = formData.get("notes") as string | null;
+
+  if (issue_date && expiry_date && expiry_date < issue_date) {
+    throw new Error("תאריך תפוגה חייב להיות אחרי תאריך הנפקה");
+  }
 
   // Verify employee belongs to the current manager before doing anything else
   const { data: emp } = await supabase
@@ -135,6 +143,10 @@ export async function updateCertification(id: string, formData: FormData) {
     const image_url = formData.get("image_url") as string | null;
     const notes = formData.get("notes") as string | null;
 
+    if (issue_date && expiry_date && expiry_date < issue_date) {
+      throw new Error("תאריך תפוגה חייב להיות אחרי תאריך הנפקה");
+    }
+
     const success = await guestUpdateCertification(guestSid, id, {
       employee_id,
       cert_type_id,
@@ -173,6 +185,10 @@ export async function updateCertification(id: string, formData: FormData) {
   const expiry_date = formData.get("expiry_date") as string;
   const image_url = formData.get("image_url") as string | null;
   const notes = formData.get("notes") as string | null;
+
+  if (issue_date && expiry_date && expiry_date < issue_date) {
+    throw new Error("תאריך תפוגה חייב להיות אחרי תאריך הנפקה");
+  }
 
   // Verify new employee belongs to the current manager
   const { data: emp } = await supabase
@@ -230,7 +246,7 @@ export async function deleteCertification(id: string) {
 
   const { data: cert } = await supabase
     .from("certifications")
-    .select("employee_id, employees!inner(manager_id)")
+    .select("id, image_url, employee_id, employees!inner(manager_id)")
     .eq("id", id)
     .single();
 
@@ -245,6 +261,14 @@ export async function deleteCertification(id: string) {
 
   if (error) {
     throw new Error(mapSupabaseError(error.message));
+  }
+
+  // Clean up uploaded file from storage
+  if (cert.image_url) {
+    const path = cert.image_url.split("/cert-images/")[1];
+    if (path) {
+      await supabase.storage.from("cert-images").remove([path]);
+    }
   }
 
   revalidatePath("/dashboard/certifications");

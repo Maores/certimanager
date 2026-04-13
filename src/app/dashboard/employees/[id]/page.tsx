@@ -102,7 +102,7 @@ export default async function EmployeeDetailPage({
             href="/dashboard/employees"
             className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-[#64748b] hover:text-[#2563eb] transition-colors"
           >
-            <ArrowRight className="h-4 w-4" />
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
             חזרה לרשימת עובדים
           </Link>
           <h1 className="text-2xl font-bold text-[#0f172a]">

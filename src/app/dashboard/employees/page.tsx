@@ -8,23 +8,29 @@ import { AutoSubmitSelect } from "@/components/ui/auto-submit-select";
 import { getGuestSessionId } from "@/lib/guest-session";
 import { guestGetEmployees, guestGetDepartments } from "@/lib/guest-store";
 
+const PAGE_SIZE = 25;
+
 export default async function EmployeesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; dept?: string; status?: string }>;
+  searchParams: Promise<{ q?: string; dept?: string; status?: string; page?: string }>;
 }) {
-  const { q, dept, status: statusFilter } = await searchParams;
+  const { q, dept, status: statusFilter, page: pageParam } = await searchParams;
+  const page = Math.max(1, parseInt(pageParam || "1", 10) || 1);
   const guestSid = await getGuestSessionId();
 
   let departments: string[];
   let employees: Employee[] | null;
+  let totalPages = 1;
 
   if (guestSid) {
     departments = guestGetDepartments(guestSid);
-    employees = guestGetEmployees(guestSid, q, dept);
+    let allGuest = guestGetEmployees(guestSid, q, dept);
     if (statusFilter) {
-      employees = employees.filter((e) => e.status === statusFilter);
+      allGuest = allGuest.filter((e) => e.status === statusFilter);
     }
+    totalPages = Math.ceil(allGuest.length / PAGE_SIZE);
+    employees = allGuest.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   } else {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -63,6 +69,22 @@ export default async function EmployeesPage({
       query = query.eq("status", statusFilter);
     }
 
+    // Count query (same filters, head-only)
+    let countQuery = supabase.from("employees").select("*", { count: "exact", head: true }).eq("manager_id", user.id);
+    if (q) {
+      const safeQ = q.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_").replace(/,/g, "\\,");
+      countQuery = countQuery.or(
+        `first_name.ilike.%${safeQ}%,last_name.ilike.%${safeQ}%,employee_number.ilike.%${safeQ}%,department.ilike.%${safeQ}%`
+      );
+    }
+    if (dept) countQuery = countQuery.eq("department", dept);
+    if (statusFilter) countQuery = countQuery.eq("status", statusFilter);
+    const { count } = await countQuery;
+    totalPages = Math.ceil((count || 0) / PAGE_SIZE);
+
+    // Apply pagination range
+    query = query.range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+
     const { data } = await query;
     employees = data as Employee[] | null;
   }
@@ -89,10 +111,12 @@ export default async function EmployeesPage({
             name="q"
             defaultValue={q ?? ""}
             placeholder="חיפוש עובד..."
+            aria-label="חיפוש עובד"
             className="w-full rounded-lg border border-border bg-white px-4 py-2.5 pr-10 text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary-ring"
           />
           <button
             type="submit"
+            aria-label="חיפוש"
             className="absolute left-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground transition-colors cursor-pointer"
           >
             <Search className="h-5 w-5" />
@@ -101,6 +125,7 @@ export default async function EmployeesPage({
         <AutoSubmitSelect
           name="dept"
           defaultValue={dept ?? ""}
+          aria-label="סינון לפי מחלקה"
           className="rounded-lg border border-border bg-white px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-ring cursor-pointer sm:w-48"
         >
           <option value="">כל המחלקות</option>
@@ -113,6 +138,7 @@ export default async function EmployeesPage({
         <AutoSubmitSelect
           name="status"
           defaultValue={statusFilter ?? ""}
+          aria-label="סינון לפי סטטוס"
           className="rounded-lg border border-border bg-white px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-ring cursor-pointer sm:w-48"
         >
           <option value="">כל הסטטוסים</option>
@@ -142,7 +168,7 @@ export default async function EmployeesPage({
           </Link>
         </div>
       ) : (
-        <EmployeeListClient employees={employees as Employee[]} />
+        <EmployeeListClient employees={employees as Employee[]} page={page} totalPages={totalPages} />
       )}
     </div>
   );

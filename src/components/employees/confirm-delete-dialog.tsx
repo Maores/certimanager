@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useEffect } from "react";
 import { AlertTriangle, Loader2, X } from "lucide-react";
 
 interface ConfirmDeleteDialogProps {
@@ -17,10 +18,45 @@ export function ConfirmDeleteDialog({
   onConfirm,
   onCancel,
 }: ConfirmDeleteDialogProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (open) {
+      cancelRef.current?.focus();
+      const dialog = dialogRef.current;
+      if (!dialog) return;
+
+      function handleTab(e: KeyboardEvent) {
+        if (e.key !== "Tab") return;
+        const focusable = dialog!.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+
+      dialog.addEventListener("keydown", handleTab);
+      return () => dialog.removeEventListener("keydown", handleTab);
+    }
+  }, [open]);
+
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      onKeyDown={(e) => {
+        if (e.key === "Escape" && !loading) onCancel();
+      }}
+    >
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
@@ -29,6 +65,10 @@ export function ConfirmDeleteDialog({
 
       {/* Dialog */}
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="delete-dialog-title"
         className="relative w-full max-w-md rounded-xl bg-white p-6 animate-fade-in"
         style={{ boxShadow: "var(--shadow-lg)" }}
       >
@@ -53,7 +93,7 @@ export function ConfirmDeleteDialog({
         </div>
 
         {/* Content */}
-        <h3 className="text-lg font-bold text-center text-foreground mb-2">
+        <h3 id="delete-dialog-title" className="text-lg font-bold text-center text-foreground mb-2">
           מחיקת {count} עובדים
         </h3>
         <p className="text-sm text-center text-muted leading-relaxed">
@@ -65,6 +105,7 @@ export function ConfirmDeleteDialog({
         {/* Actions */}
         <div className="flex gap-3 mt-6">
           <button
+            ref={cancelRef}
             type="button"
             onClick={onCancel}
             disabled={loading}

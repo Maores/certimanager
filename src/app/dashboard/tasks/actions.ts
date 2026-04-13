@@ -74,29 +74,30 @@ export async function updateTaskStatus(taskId: string, newStatus: string) {
     throw new Error("סטטוס לא חוקי");
   }
 
-  // Update task only if it belongs to an employee of this manager
-  const { data: updated, error } = await supabase
+  // Verify ownership BEFORE updating: join to employees to confirm manager_id
+  const { data: task } = await supabase
     .from("employee_tasks")
-    .update({ status: newStatus, updated_at: new Date().toISOString() })
+    .select("id, employee_id, employees!inner(manager_id)")
     .eq("id", taskId)
-    .select("id, employee_id")
     .single();
 
-  if (error || !updated) {
-    throw new Error("שגיאה בעדכון המשימה");
+  if (!task) {
+    throw new Error("המשימה לא נמצאה");
   }
 
-  // Verify ownership through employee
-  const { data: employee } = await supabase
-    .from("employees")
-    .select("id")
-    .eq("id", updated.employee_id)
-    .eq("manager_id", user.id)
-    .single();
-
-  if (!employee) {
-    // Revert the update - task doesn't belong to this manager
+  const employees = task.employees as unknown as { manager_id: string };
+  if (employees.manager_id !== user.id) {
     throw new Error("אין הרשאה לעדכן משימה זו");
+  }
+
+  // Ownership confirmed — now perform the update
+  const { error } = await supabase
+    .from("employee_tasks")
+    .update({ status: newStatus, updated_at: new Date().toISOString() })
+    .eq("id", taskId);
+
+  if (error) {
+    throw new Error("שגיאה בעדכון המשימה");
   }
 
   revalidatePath("/dashboard/tasks");

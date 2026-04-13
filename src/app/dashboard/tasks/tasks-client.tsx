@@ -200,10 +200,11 @@ export function TasksClient({
           </h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">
+              <label htmlFor="task-employee" className="block text-sm font-medium text-foreground mb-1">
                 עובד *
               </label>
               <select
+                id="task-employee"
                 name="employee_id"
                 required
                 className="w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-ring cursor-pointer"
@@ -217,25 +218,29 @@ export function TasksClient({
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">
+              <label htmlFor="task-responsible" className="block text-sm font-medium text-foreground mb-1">
                 אחראי
               </label>
               <input
                 type="text"
+                id="task-responsible"
                 name="responsible"
+                maxLength={50}
                 placeholder="שם האחראי על המשימה"
                 className="w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary-ring"
               />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">
+            <label htmlFor="task-description" className="block text-sm font-medium text-foreground mb-1">
               תיאור המשימה *
             </label>
             <textarea
+              id="task-description"
               name="description"
               required
               rows={3}
+              maxLength={500}
               placeholder="תאר את המשימה..."
               className="w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary-ring resize-none"
             />
@@ -257,6 +262,7 @@ export function TasksClient({
         <AutoSubmitSelect
           name="status"
           defaultValue={statusFilter}
+          aria-label="סינון לפי סטטוס"
           className="rounded-lg border border-border bg-white px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-ring cursor-pointer sm:w-48"
         >
           <option value="">כל הסטטוסים</option>
@@ -267,6 +273,7 @@ export function TasksClient({
         <AutoSubmitSelect
           name="responsible"
           defaultValue={responsibleFilter}
+          aria-label="סינון לפי אחראי"
           className="rounded-lg border border-border bg-white px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-ring cursor-pointer sm:w-48"
         >
           <option value="">כל האחראים</option>
@@ -296,24 +303,25 @@ export function TasksClient({
             style={{ boxShadow: "var(--shadow-sm)" }}
           >
             <table className="w-full text-sm">
+              <caption className="sr-only">רשימת משימות</caption>
               <thead>
                 <tr className="border-b border-border bg-gray-50/50">
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">
+                  <th scope="col" className="px-4 py-3 text-right font-medium text-muted-foreground">
                     עובד
                   </th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">
+                  <th scope="col" className="px-4 py-3 text-right font-medium text-muted-foreground">
                     תיאור
                   </th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">
+                  <th scope="col" className="px-4 py-3 text-right font-medium text-muted-foreground">
                     אחראי
                   </th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">
+                  <th scope="col" className="px-4 py-3 text-right font-medium text-muted-foreground">
                     סטטוס
                   </th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">
+                  <th scope="col" className="px-4 py-3 text-right font-medium text-muted-foreground">
                     תאריך
                   </th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">
+                  <th scope="col" className="px-4 py-3 text-right font-medium text-muted-foreground">
                     פעולות
                   </th>
                 </tr>
@@ -356,6 +364,7 @@ export function TasksClient({
                         disabled={isPending}
                         className="rounded-lg p-1.5 text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer disabled:opacity-50"
                         title="מחק משימה"
+                        aria-label="מחק משימה"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -387,6 +396,7 @@ export function TasksClient({
                     onClick={() => handleDelete(task.id)}
                     disabled={isPending}
                     className="rounded-lg p-1.5 text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer disabled:opacity-50 flex-shrink-0"
+                    aria-label="מחק משימה"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>

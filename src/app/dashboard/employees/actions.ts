@@ -28,15 +28,23 @@ function mapSupabaseError(msg: string): string {
 export async function createEmployee(formData: FormData) {
   const guestSid = await getGuestSessionId();
   if (guestSid) {
+    const first_name = (formData.get("first_name") as string || "").trim();
+    const last_name = (formData.get("last_name") as string || "").trim();
+    const employee_number = (formData.get("employee_number") as string || "").trim();
+
+    if (!first_name || !last_name || !employee_number) {
+      throw new Error("שם פרטי, שם משפחה ומספר זהות/דרכון הם שדות חובה");
+    }
+
     guestCreateEmployee(guestSid, {
-      first_name: formData.get("first_name") as string,
-      last_name: formData.get("last_name") as string,
-      employee_number: formData.get("employee_number") as string,
-      department: formData.get("department") as string,
-      phone: formData.get("phone") as string,
-      email: formData.get("email") as string,
+      first_name,
+      last_name,
+      employee_number,
+      department: (formData.get("department") as string || "").trim(),
       status: (formData.get("status") as string) || "פעיל",
-      notes: (formData.get("notes") as string) || null,
+      phone: (formData.get("phone") as string || "").trim(),
+      email: (formData.get("email") as string || "").trim(),
+      notes: (formData.get("notes") as string || "").trim() || null,
     });
     redirect("/dashboard/employees");
   }
@@ -79,20 +87,30 @@ export async function createEmployee(formData: FormData) {
 }
 
 export async function updateEmployee(id: string, formData: FormData) {
+  const first_name = (formData.get("first_name") as string || "").trim();
+  const last_name = (formData.get("last_name") as string || "").trim();
+  const employee_number = (formData.get("employee_number") as string || "").trim();
+
+  if (!first_name || !last_name || !employee_number) {
+    throw new Error("שם פרטי, שם משפחה ומספר זהות/דרכון הם שדות חובה");
+  }
+
+  const updateData = {
+    first_name,
+    last_name,
+    employee_number,
+    department: (formData.get("department") as string || "").trim(),
+    phone: (formData.get("phone") as string || "").trim(),
+    email: (formData.get("email") as string || "").trim(),
+    status: (formData.get("status") as string) || "פעיל",
+    notes: (formData.get("notes") as string || "").trim() || null,
+  };
+
   const guestSid = await getGuestSessionId();
   if (guestSid) {
-    const ok = guestUpdateEmployee(guestSid, id, {
-      first_name: formData.get("first_name") as string,
-      last_name: formData.get("last_name") as string,
-      employee_number: formData.get("employee_number") as string,
-      department: formData.get("department") as string,
-      phone: formData.get("phone") as string,
-      email: formData.get("email") as string,
-      status: (formData.get("status") as string) || "פעיל",
-      notes: (formData.get("notes") as string) || null,
-    });
+    const ok = guestUpdateEmployee(guestSid, id, updateData);
     if (!ok) {
-      throw new Error("Employee not found");
+      throw new Error("העובד לא נמצא");
     }
     redirect("/dashboard/employees");
   }
@@ -109,16 +127,7 @@ export async function updateEmployee(id: string, formData: FormData) {
 
   const { data: updated, error } = await supabase
     .from("employees")
-    .update({
-      first_name: formData.get("first_name") as string,
-      last_name: formData.get("last_name") as string,
-      employee_number: formData.get("employee_number") as string,
-      department: formData.get("department") as string,
-      phone: formData.get("phone") as string,
-      email: formData.get("email") as string,
-      status: (formData.get("status") as string) || "פעיל",
-      notes: (formData.get("notes") as string) || null,
-    })
+    .update(updateData)
     .eq("id", id)
     .eq("manager_id", user.id)
     .select("id");

@@ -62,7 +62,7 @@ export default async function EditCertificationPage({
         href="/dashboard/certifications"
         className="mb-4 inline-flex items-center text-sm text-gray-500 hover:text-gray-700"
       >
-        &rarr; חזרה להסמכות
+        <span aria-hidden="true">&rarr;</span> חזרה להסמכות
       </Link>
       <h1 className="text-2xl font-bold text-gray-900 mb-6">
         עריכת הסמכה

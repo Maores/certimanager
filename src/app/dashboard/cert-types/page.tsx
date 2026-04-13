@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createCertType, deleteCertType } from "./actions";
 import { DeleteButton } from "@/components/ui/delete-button";
-import { Plus, Tag, Clock } from "lucide-react";
+import { CertTypeCreateForm } from "@/components/cert-types/cert-type-create-form";
+import { Tag, Clock } from "lucide-react";
 import { getGuestSessionId } from "@/lib/guest-session";
 import { guestGetCertTypes } from "@/lib/guest-store";
 
@@ -51,65 +52,7 @@ export default async function CertTypesPage() {
         <h2 className="text-lg font-semibold text-foreground mb-4">
           הוסף סוג הסמכה חדש
         </h2>
-        <form action={createCertType} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label
-                htmlFor="name"
-                className="block text-sm font-medium text-foreground mb-1"
-              >
-                שם
-              </label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                required
-                placeholder="לדוגמה: עבודה בגובה"
-                className="w-full border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-colors"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="default_validity_months"
-                className="block text-sm font-medium text-foreground mb-1"
-              >
-                תוקף ברירת מחדל (חודשים)
-              </label>
-              <input
-                type="number"
-                id="default_validity_months"
-                name="default_validity_months"
-                required
-                min={1}
-                defaultValue={12}
-                className="w-full border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-colors"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="description"
-                className="block text-sm font-medium text-foreground mb-1"
-              >
-                תיאור
-              </label>
-              <input
-                type="text"
-                id="description"
-                name="description"
-                placeholder="תיאור קצר (אופציונלי)"
-                className="w-full border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-colors"
-              />
-            </div>
-          </div>
-          <button
-            type="submit"
-            className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-hover transition-colors text-sm font-medium inline-flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            הוסף סוג
-          </button>
-        </form>
+        <CertTypeCreateForm action={createCertType} />
       </div>
 
       {/* Cert types list */}

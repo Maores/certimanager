@@ -188,27 +188,32 @@ export default async function DashboardPage() {
             }}
           >
             <table className="w-full text-sm min-w-[500px]">
+              <caption className="sr-only">הסמכות שפג תוקפן או יפוג בקרוב</caption>
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--border)" }}>
                   <th
+                    scope="col"
                     className="text-right px-5 py-3 font-medium text-sm"
                     style={{ color: "var(--muted)" }}
                   >
                     עובד
                   </th>
                   <th
+                    scope="col"
                     className="text-right px-5 py-3 font-medium text-sm"
                     style={{ color: "var(--muted)" }}
                   >
                     הסמכה
                   </th>
                   <th
+                    scope="col"
                     className="text-right px-5 py-3 font-medium text-sm"
                     style={{ color: "var(--muted)" }}
                   >
                     תאריך תפוגה
                   </th>
                   <th
+                    scope="col"
                     className="text-right px-5 py-3 font-medium text-sm"
                     style={{ color: "var(--muted)" }}
                   >

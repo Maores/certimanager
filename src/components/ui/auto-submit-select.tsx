@@ -1,17 +1,16 @@
 "use client";
 
-interface AutoSubmitSelectProps {
+interface AutoSubmitSelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   name: string;
   defaultValue: string;
-  className?: string;
   children: React.ReactNode;
 }
 
 export function AutoSubmitSelect({
   name,
   defaultValue,
-  className,
   children,
+  ...rest
 }: AutoSubmitSelectProps) {
   return (
     <select
@@ -21,7 +20,7 @@ export function AutoSubmitSelect({
         const form = e.currentTarget.closest("form");
         if (form) form.submit();
       }}
-      className={className}
+      {...rest}
     >
       {children}
     </select>

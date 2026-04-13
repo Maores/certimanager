@@ -61,10 +61,10 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Default 80% zoom on desktop for better data density */
+/* Slightly smaller base font on desktop for better data density */
 @media (min-width: 768px) {
   html {
-    zoom: 0.8;
+    font-size: 13px;
   }
 }
 

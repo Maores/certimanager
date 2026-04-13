@@ -21,6 +21,7 @@ export interface NavItem {
 
 interface SidebarProps {
   items: NavItem[];
+  isGuest?: boolean;
 }
 
 const iconMap: Record<string, LucideIcon> = {
@@ -39,13 +40,16 @@ function getIcon(href: string): LucideIcon {
   return iconMap[segment] || LayoutDashboard;
 }
 
-export default function Sidebar({ items }: SidebarProps) {
+export default function Sidebar({ items, isGuest }: SidebarProps) {
   const pathname = usePathname();
+  const filteredItems = isGuest
+    ? items.filter(item => !["/dashboard/import"].includes(item.href))
+    : items;
 
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex flex-col w-64 bg-white border-l border-border">
+      <aside aria-label="תפריט ניווט" className="hidden md:flex flex-col w-64 bg-white border-l border-border">
         {/* Logo */}
         <div className="h-16 flex items-center gap-2.5 px-5 border-b border-border">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
@@ -57,8 +61,8 @@ export default function Sidebar({ items }: SidebarProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-3 space-y-0.5">
-          {items.map((item) => {
+        <nav aria-label="ניווט ראשי" className="flex-1 p-3 space-y-0.5">
+          {filteredItems.map((item) => {
             const isActive =
               item.href === "/dashboard"
                 ? pathname === "/dashboard"
@@ -69,6 +73,7 @@ export default function Sidebar({ items }: SidebarProps) {
               <Link
                 key={item.href}
                 href={item.href}
+                aria-current={isActive ? "page" : undefined}
                 className={`
                   flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
                   transition-all duration-150
@@ -100,9 +105,13 @@ export default function Sidebar({ items }: SidebarProps) {
       </aside>
 
       {/* Mobile bottom tab bar */}
-      <nav className="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-sm border-t border-border z-50 md:hidden safe-area-bottom">
+      <nav aria-label="ניווט ראשי" className="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-sm border-t border-border z-50 md:hidden safe-area-bottom">
         <div className="flex items-center h-16 px-2">
-          {items.map((item) => {
+          {items
+            .filter(item =>
+              ["/dashboard", "/dashboard/employees", "/dashboard/certifications", "/dashboard/tasks", "/dashboard/reports"].includes(item.href)
+            )
+            .map((item) => {
             const isActive =
               item.href === "/dashboard"
                 ? pathname === "/dashboard"
@@ -113,6 +122,7 @@ export default function Sidebar({ items }: SidebarProps) {
               <Link
                 key={item.href}
                 href={item.href}
+                aria-current={isActive ? "page" : undefined}
                 className={`
                   flex flex-col items-center justify-center gap-0.5 min-w-0 flex-1 py-1.5
                   transition-colors duration-150
@@ -124,7 +134,7 @@ export default function Sidebar({ items }: SidebarProps) {
                   strokeWidth={isActive ? 2.25 : 1.75}
                 />
                 <span
-                  className={`text-[9px] truncate leading-none max-w-full px-0.5 ${
+                  className={`text-[10px] truncate leading-none max-w-full px-0.5 ${
                     isActive ? "font-semibold" : "font-medium"
                   }`}
                 >

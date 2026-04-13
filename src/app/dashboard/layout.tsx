@@ -37,11 +37,11 @@ export default async function DashboardLayout({
 
   return (
     <div dir="rtl" className="min-h-screen bg-background flex">
-      <Sidebar items={navItems} />
+      <Sidebar items={navItems} isGuest={guest} />
 
       <div className="flex-1 flex flex-col min-h-screen">
         {/* Header */}
-        <header className="h-14 bg-white border-b border-border flex items-center justify-between px-4 sm:px-6 sticky top-0 z-20">
+        <header aria-label="סרגל עליון" className="h-14 bg-white border-b border-border flex items-center justify-between px-4 sm:px-6 sticky top-0 z-20">
           <h2 className="text-lg font-bold text-primary md:hidden tracking-tight">
             CertiManager
           </h2>
@@ -59,6 +59,7 @@ export default async function DashboardLayout({
             <form action={logout}>
               <button
                 type="submit"
+                aria-label="יציאה"
                 className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-danger font-medium px-3 py-1.5 rounded-lg hover:bg-danger-light transition-colors cursor-pointer"
               >
                 <LogOut className="h-4 w-4" strokeWidth={1.75} />
@@ -69,7 +70,7 @@ export default async function DashboardLayout({
         </header>
 
         {/* Page content */}
-        <main className="flex-1 p-4 sm:p-6 pb-24 md:pb-6 overflow-x-hidden animate-fade-in">
+        <main aria-label="תוכן ראשי" className="flex-1 p-4 sm:p-6 pb-24 md:pb-6 overflow-x-hidden animate-fade-in">
           {children}
         </main>
       </div>

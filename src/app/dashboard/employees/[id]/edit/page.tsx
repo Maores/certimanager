@@ -46,7 +46,7 @@ export default async function EditEmployeePage({
         href={`/dashboard/employees/${id}`}
         className="mb-4 inline-flex items-center text-sm text-gray-500 hover:text-gray-700"
       >
-        &rarr; חזרה לפרטי עובד
+        <span aria-hidden="true">&rarr;</span> חזרה לפרטי עובד
       </Link>
       <h1 className="text-2xl font-bold text-gray-900 mb-6">
         עריכת עובד: {employee.first_name} {employee.last_name}

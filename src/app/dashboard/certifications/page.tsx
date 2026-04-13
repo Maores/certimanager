@@ -161,6 +161,7 @@ export default async function CertificationsPage({
             name="search"
             defaultValue={searchQuery}
             placeholder="חיפוש לפי שם עובד או הסמכה..."
+            aria-label="חיפוש הסמכות"
             className="w-full pr-4 pl-10 py-2.5 rounded-lg text-sm border border-border bg-white text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary-ring"
           />
           <input type="hidden" name="filter" value={currentFilter} />
@@ -168,6 +169,7 @@ export default async function CertificationsPage({
           {typeFilter && <input type="hidden" name="type" value={typeFilter} />}
           <button
             type="submit"
+            aria-label="חיפוש"
             className="absolute left-3 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground transition-colors cursor-pointer"
           >
             <Search className="h-4.5 w-4.5" style={{ width: "18px", height: "18px" }} />
@@ -176,6 +178,7 @@ export default async function CertificationsPage({
         <AutoSubmitSelect
           name="dept"
           defaultValue={deptFilter}
+          aria-label="סינון לפי מחלקה"
           className="rounded-lg border border-border bg-white px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-ring cursor-pointer sm:w-44"
         >
           <option value="">כל המחלקות</option>
@@ -186,6 +189,7 @@ export default async function CertificationsPage({
         <AutoSubmitSelect
           name="type"
           defaultValue={typeFilter}
+          aria-label="סינון לפי סוג הסמכה"
           className="rounded-lg border border-border bg-white px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-ring cursor-pointer sm:w-44"
         >
           <option value="">כל סוגי ההסמכה</option>
@@ -258,27 +262,28 @@ export default async function CertificationsPage({
             }}
           >
             <table className="w-full">
+              <caption className="sr-only">רשימת הסמכות</caption>
               <thead>
                 <tr style={{ backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
-                  <th className="text-right px-6 py-3.5 text-sm font-medium" style={{ color: "#64748b" }}>
+                  <th scope="col" className="text-right px-6 py-3.5 text-sm font-medium" style={{ color: "#64748b" }}>
                     עובד
                   </th>
-                  <th className="text-right px-6 py-3.5 text-sm font-medium" style={{ color: "#64748b" }}>
+                  <th scope="col" className="text-right px-6 py-3.5 text-sm font-medium" style={{ color: "#64748b" }}>
                     סוג הסמכה
                   </th>
-                  <th className="text-right px-6 py-3.5 text-sm font-medium" style={{ color: "#64748b" }}>
+                  <th scope="col" className="text-right px-6 py-3.5 text-sm font-medium" style={{ color: "#64748b" }}>
                     קובץ
                   </th>
-                  <th className="text-right px-6 py-3.5 text-sm font-medium" style={{ color: "#64748b" }}>
+                  <th scope="col" className="text-right px-6 py-3.5 text-sm font-medium" style={{ color: "#64748b" }}>
                     תאריך הנפקה
                   </th>
-                  <th className="text-right px-6 py-3.5 text-sm font-medium" style={{ color: "#64748b" }}>
+                  <th scope="col" className="text-right px-6 py-3.5 text-sm font-medium" style={{ color: "#64748b" }}>
                     תאריך תפוגה
                   </th>
-                  <th className="text-right px-6 py-3.5 text-sm font-medium" style={{ color: "#64748b" }}>
+                  <th scope="col" className="text-right px-6 py-3.5 text-sm font-medium" style={{ color: "#64748b" }}>
                     סטטוס
                   </th>
-                  <th className="text-right px-6 py-3.5 text-sm font-medium" style={{ color: "#64748b" }}>
+                  <th scope="col" className="text-right px-6 py-3.5 text-sm font-medium" style={{ color: "#64748b" }}>
                     פעולות
                   </th>
                 </tr>
@@ -323,7 +328,7 @@ export default async function CertificationsPage({
                         <span
                           className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${sc.bg} ${sc.text}`}
                         >
-                          <span className={`h-1.5 w-1.5 rounded-full ${sc.dot}`} />
+                          <span className={`h-1.5 w-1.5 rounded-full ${sc.dot}`} aria-hidden="true" />
                           {sc.label}
                         </span>
                       </td>
@@ -377,7 +382,7 @@ export default async function CertificationsPage({
                     <span
                       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${sc.bg} ${sc.text}`}
                     >
-                      <span className={`h-1.5 w-1.5 rounded-full ${sc.dot}`} />
+                      <span className={`h-1.5 w-1.5 rounded-full ${sc.dot}`} aria-hidden="true" />
                       {sc.label}
                     </span>
                   </div>
