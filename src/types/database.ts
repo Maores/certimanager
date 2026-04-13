@@ -53,6 +53,27 @@ export interface EmployeeTask {
 
 export type TaskStatus = "פתוח" | "בטיפול" | "הושלם";
 
+export type CandidateStatus = "ממתין" | "נרשם" | "השלים" | "הוסמך";
+
+export const CANDIDATE_STATUSES: CandidateStatus[] = ["ממתין", "נרשם", "השלים", "הוסמך"];
+
+export interface CourseCandidate {
+  id: string;
+  manager_id: string;
+  first_name: string;
+  last_name: string;
+  id_number: string;
+  phone: string | null;
+  city: string | null;
+  cert_type_id: string;
+  cert_type_name?: string;
+  status: CandidateStatus;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  is_employee?: boolean;
+}
+
 export interface EmployeeWithCerts extends Employee {
   certifications: (Certification & { cert_type: CertType })[];
 }
