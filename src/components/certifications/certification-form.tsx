@@ -208,7 +208,7 @@ export default function CertificationForm({
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
       {formError && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {formError}
         </div>
       )}
@@ -268,7 +268,7 @@ export default function CertificationForm({
 
       {/* Warning for duplicate cert */}
       {warning && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+        <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3">
           <p className="text-sm text-amber-800">{warning}</p>
         </div>
       )}
