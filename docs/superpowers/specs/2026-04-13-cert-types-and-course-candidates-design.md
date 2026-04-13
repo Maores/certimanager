@@ -36,6 +36,17 @@ Three tasks:
 | Supabase DB | INSERT 2 new cert_types, UPDATE "PFI" → "חוצה צפון (PFI)" | Medium |
 | `supabase/migration_cert_types_v2.sql` | New migration file documenting changes | Low |
 
+### Migration: Manager-Scoped Cert Types
+The `cert_types` table is scoped per `manager_id`. The migration must iterate over ALL existing managers and INSERT/UPDATE for each one. Pattern:
+```sql
+INSERT INTO cert_types (manager_id, name)
+SELECT m.id, 'חוצה ישראל' FROM managers m
+WHERE NOT EXISTS (SELECT 1 FROM cert_types ct WHERE ct.manager_id = m.id AND ct.name = 'חוצה ישראל');
+-- Repeat for נתיבי ישראל
+-- UPDATE PFI → חוצה צפון (PFI) for all managers
+UPDATE cert_types SET name = 'חוצה צפון (PFI)' WHERE name = 'PFI';
+```
+
 ### Normalization Rules (excel-parser.ts)
 - `"חוצה ישראל"` → `"חוצה ישראל"`
 - `"נתיבי ישראל"` → `"נתיבי ישראל"`
@@ -65,19 +76,40 @@ CREATE TABLE course_candidates (
   id_number     text NOT NULL,
   phone         text,
   city          text,
-  cert_type_id  uuid NOT NULL REFERENCES cert_types(id),
+  cert_type_id  uuid NOT NULL REFERENCES cert_types(id) ON DELETE RESTRICT,
   status        text NOT NULL DEFAULT 'ממתין',
   notes         text,
   created_at    timestamptz DEFAULT now(),
+  updated_at    timestamptz DEFAULT now(),
   UNIQUE(manager_id, id_number, cert_type_id)
 );
+
+-- Indexes for query performance
+CREATE INDEX idx_candidates_manager ON course_candidates(manager_id);
+CREATE INDEX idx_candidates_manager_status ON course_candidates(manager_id, status);
+CREATE INDEX idx_candidates_id_number ON course_candidates(id_number);
+
+-- Auto-update updated_at trigger
+CREATE OR REPLACE FUNCTION update_candidates_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN NEW.updated_at = now(); RETURN NEW; END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER candidates_updated_at BEFORE UPDATE ON course_candidates
+FOR EACH ROW EXECUTE FUNCTION update_candidates_updated_at();
 
 ALTER TABLE course_candidates ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "candidates_own" ON course_candidates FOR ALL
   USING (manager_id = auth.uid());
+
+-- Also add missing unique constraint on certifications for promotion dedup
+CREATE UNIQUE INDEX IF NOT EXISTS idx_certifications_employee_cert_type
+  ON certifications(employee_id, cert_type_id);
 ```
 
 **Unique constraint:** `(manager_id, id_number, cert_type_id)` — same person can be a candidate for multiple cert type courses.
+
+**Certifications dedup:** Added unique index on `certifications(employee_id, cert_type_id)` to support the promotion flow's "find or create" pattern and prevent duplicate certification records.
 
 ### Status Values
 `ממתין` → `נרשם` → `השלים` → `הוסמך`
@@ -110,26 +142,30 @@ CREATE POLICY "candidates_own" ON course_candidates FOR ALL
 
 #### 3. Import Candidates (`/dashboard/candidates/import`)
 - 3-step wizard matching existing employee import pattern:
-  - Step 1: Upload .xlsx or .csv file (drag-and-drop + file picker)
+  - Step 1: Upload .xlsx file (drag-and-drop + file picker, .xlsx only — matching employee import)
   - Step 2: Review parsed candidates with stat cards and table preview
   - Step 3: Summary with counts (created, skipped, errors)
 - Expected columns: שם פרטי, שם משפחה, ת.ז, טלפון, עיר, סוג הסמכה, סטטוס
-- Auto-match cert type names using normalization
+- Phone and city are optional — rows missing them are accepted without warnings
+- Auto-match cert type names using `normalizeCertTypeName()`
 - Deduplication by (manager_id, id_number, cert_type_id)
+- Empty state, error state, and loading state follow existing employee import patterns
 
 ### Sidebar Navigation
 New item "מועמדים לקורסים" placed between "סוגי הסמכות" and "משימות" in the sidebar. Icon: `GraduationCap` from lucide-react.
+- Add `"candidates": GraduationCap` to `iconMap` in `src/components/layout/sidebar.tsx`
+- Exclude `/dashboard/candidates` from guest-mode navigation filter
 
 ### Promotion Flow
 
 Three paths to promote a candidate to an employee:
 
 #### Manual Promote
-1. Click "הוסף כעובד" button on candidate row
-2. Confirmation dialog shows candidate details
+1. "הוסף כעובד" button appears on all rows regardless of status
+2. Click button → confirmation dialog shows candidate details
 3. Upsert employee by ת.ז (create if new, update if exists)
-4. Create certification record linking employee to cert_type
-5. Update candidate status → הוסמך
+4. Create certification record linking employee to cert_type (uses DB unique index, no duplicates)
+5. Update candidate status → הוסמך (force-set regardless of previous status)
 
 #### Auto Promote
 1. When status is changed to הוסמך via inline dropdown
@@ -138,9 +174,9 @@ Three paths to promote a candidate to an employee:
 4. If declined → only update status, no employee/cert changes
 
 #### Bulk Promote
-1. Select multiple candidates via checkboxes
+1. Select multiple candidates via checkboxes (any status allowed)
 2. Click "קדם לעובדים" in bulk action bar
-3. Confirmation dialog listing all selected candidates
+3. Confirmation dialog listing all selected candidates with their current statuses
 4. Upsert all as employees + create certifications
 5. Update all statuses → הוסמך
 
@@ -157,13 +193,13 @@ function promoteCandidate(candidate):
 ```
 
 ### Server Actions
-- `createCandidate(formData)` — insert new candidate
-- `updateCandidateStatus(id, status)` — update status, trigger promotion dialog if הוסמך
-- `promoteCandidate(id)` — single candidate promotion
-- `promoteCandidates(ids)` — bulk promotion
-- `deleteCandidate(id)` — remove candidate
-- `parseCandidateFile(formData)` — parse uploaded Excel/CSV
-- `executeCandidateImport(candidates)` — bulk insert parsed candidates
+- `createCandidate(formData)` — insert new candidate → revalidate `/dashboard/candidates`
+- `updateCandidateStatus(id, status)` — update status, trigger promotion dialog if הוסמך → revalidate `/dashboard/candidates`
+- `promoteCandidate(id)` — single candidate promotion → revalidate `/dashboard/candidates` + `/dashboard/employees`
+- `promoteCandidates(ids)` — bulk promotion → revalidate `/dashboard/candidates` + `/dashboard/employees`
+- `deleteCandidate(id)` — remove candidate → revalidate `/dashboard/candidates`
+- `parseCandidateFile(formData)` — parse uploaded .xlsx file
+- `executeCandidateImport(candidates)` — bulk insert parsed candidates → revalidate `/dashboard/candidates`
 
 ### Guest Mode
 Course candidates module will NOT support guest mode — it requires authenticated access since it writes to the database and links to real employee/cert data.
@@ -180,7 +216,10 @@ Course candidates module will NOT support guest mode — it requires authenticat
 3. Query app database for employee counts per cert type
 4. Compare counts and report discrepancies
 5. Verify unique employee count (no double-counting employees with multiple certs)
-6. Fix mismatches using the most recent Excel as source of truth
+6. Fix mismatches using the most recent Excel as source of truth:
+   - Missing employees → add them via existing import logic
+   - Extra employees not in Excel → report but do NOT delete (manual review needed)
+   - This is a one-time manual verification, not an automated recurring check
 
 ### Output Format
 | Certification Type | Excel Count | App Count | Match? |
