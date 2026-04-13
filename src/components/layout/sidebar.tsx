@@ -10,6 +10,7 @@ import {
   FileUp,
   BarChart3,
   ClipboardList,
+  GraduationCap,
   type LucideIcon,
 } from "lucide-react";
 
@@ -31,6 +32,7 @@ const iconMap: Record<string, LucideIcon> = {
   "cert-types": Tag,
   import: FileUp,
   reports: BarChart3,
+  candidates: GraduationCap,
   tasks: ClipboardList,
 };
 
@@ -43,7 +45,7 @@ function getIcon(href: string): LucideIcon {
 export default function Sidebar({ items, isGuest }: SidebarProps) {
   const pathname = usePathname();
   const filteredItems = isGuest
-    ? items.filter(item => !["/dashboard/import"].includes(item.href))
+    ? items.filter(item => !["/dashboard/import", "/dashboard/candidates"].includes(item.href))
     : items;
 
   return (
