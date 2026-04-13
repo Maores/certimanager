@@ -5,7 +5,7 @@
  */
 
 import { cookies } from "next/headers";
-import { hasGuestSession } from "@/lib/guest-store";
+import { hasGuestSession, getGuestData } from "@/lib/guest-store";
 
 const GUEST_COOKIE = "guest_session";
 
@@ -37,6 +37,9 @@ export async function getGuestSessionId(): Promise<string | null> {
 export async function createGuestSession(): Promise<string> {
   const cookieStore = await cookies();
   const sessionId = `guest-${crypto.randomUUID()}`;
+  // Initialize the in-memory session data BEFORE setting the cookie,
+  // so hasGuestSession() returns true when the redirect lands.
+  getGuestData(sessionId);
   cookieStore.set(GUEST_COOKIE, sessionId, {
     httpOnly: true,
     sameSite: "lax",

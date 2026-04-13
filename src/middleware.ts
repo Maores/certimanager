@@ -1,14 +1,15 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { hasGuestSession } from "@/lib/guest-store";
 
 const GUEST_COOKIE = "guest_session";
 
 export async function middleware(request: NextRequest) {
-  // Guest sessions bypass Supabase auth entirely — but validate the cookie value
-  // against the server-side sessions Map to prevent cookie forgery.
+  // Guest sessions bypass Supabase auth entirely.
+  // We only check cookie existence here — NOT hasGuestSession() — because
+  // middleware runs in Edge runtime while the guest store lives in Node runtime
+  // (different globalThis). The server components validate via getGuestSessionId().
   const guestCookieId = request.cookies.get(GUEST_COOKIE)?.value;
-  const isGuest = guestCookieId ? hasGuestSession(guestCookieId) : false;
+  const isGuest = !!guestCookieId;
 
   if (isGuest) {
     // Guest trying to access login → redirect to dashboard
@@ -21,8 +22,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next({ request });
   }
 
-  // Track whether we need to purge a forged/expired guest cookie from the response
-  const shouldDeleteGuestCookie = !!guestCookieId && !isGuest;
+  // No forged cookie cleanup in middleware — server components handle validation
 
   let supabaseResponse = NextResponse.next({ request });
 
@@ -67,11 +67,6 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);
-  }
-
-  // Delete forged/expired guest cookie so the browser stops sending it
-  if (shouldDeleteGuestCookie) {
-    supabaseResponse.cookies.delete(GUEST_COOKIE);
   }
 
   return supabaseResponse;
