@@ -49,7 +49,7 @@ const WORKER_SHEETS: Record<string, SheetConfig> = {
   "מאושרי נת״ע": { certTypes: ["נת״ע"], defaultStatus: "פעיל" },
   "מאושרי כביש 6 + נת״ע": { certTypes: ["נת״ע", "כביש 6"], defaultStatus: "פעיל" },
   "מאושרי כביש 6": { certTypes: ["כביש 6"], defaultStatus: "פעיל" },
-  "PFI": { certTypes: ["PFI"], defaultStatus: "פעיל" },
+  "PFI": { certTypes: ["חוצה צפון (PFI)"], defaultStatus: "פעיל" },
   "פעיל - ללא הסמכה מוגדרת": { certTypes: [], defaultStatus: "פעיל" },
   "חלת - מחלה": { certTypes: [], defaultStatus: 'חל"ת' },
   "משימות להמשך טיפול": { certTypes: [], defaultStatus: "לא פעיל" },
@@ -78,7 +78,7 @@ const STATUS_MAP: Record<string, string> = {
 const STATUS_VALUES_AS_CERT = new Set(["חלת", "מחלה", "פעיל", "לא פעיל", 'חל"ת', "חל״ת"]);
 
 /** Canonical cert type names */
-const CANONICAL_CERT_TYPES = ["נת״ע", "כביש 6", "PFI"] as const;
+const CANONICAL_CERT_TYPES = ["נת״ע", "כביש 6", "חוצה ישראל", "נתיבי ישראל", "חוצה צפון (PFI)"] as const;
 
 /**
  * Normalize a raw cert-type string from the "הסמכה" column into canonical names.
@@ -93,8 +93,16 @@ export function normalizeCertTypeName(raw: string): string[] {
   // Filter out status values that were mistakenly placed in the cert column
   if (STATUS_VALUES_AS_CERT.has(s)) return [];
 
-  // Case-insensitive match for PFI
-  if (/^pfi$/i.test(s)) return ["PFI"];
+  // חוצה ישראל
+  if (s === "חוצה ישראל") return ["חוצה ישראל"];
+
+  // נתיבי ישראל
+  if (s === "נתיבי ישראל") return ["נתיבי ישראל"];
+
+  // חוצה צפון (PFI) — case-insensitive PFI + Hebrew variants
+  if (/^pfi$/i.test(s) || s.includes("חוצה צפון")) {
+    return ["חוצה צפון (PFI)"];
+  }
 
   // Normalize all Hebrew gershayim variants for נת״ע:
   //   נתי"ע  נת"ע  נת״ע  נתע  מאושר נתע  → נת״ע
