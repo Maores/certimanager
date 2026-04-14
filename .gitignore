@@ -54,3 +54,10 @@ scripts/*.mjs
 # Sensitive files
 cookies.txt
 skills-lock.json
+
+# AI tool state directories
+.agents/
+.kiro/
+.qwen/
+.superpowers/
+.windsurf/
