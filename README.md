@@ -1,4 +1,4 @@
-# CertiManager - מערכת ניהול הסמכות
+# CertiManager - Employee Certificates Manager
 
 A certification tracking and renewal management system for managers.
 Built with Next.js, Supabase, and Tailwind CSS.
