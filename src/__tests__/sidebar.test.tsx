@@ -132,3 +132,59 @@ describe("Sidebar — active highlight on 'עוד'", () => {
     expect(moreBtn.className).toContain("text-muted-foreground");
   });
 });
+
+describe("Sidebar — sheet close triggers", () => {
+  beforeEach(() => {
+    mockPathname = "/dashboard";
+  });
+
+  function openSheet() {
+    fireEvent.click(screen.getByRole("button", { name: "עוד אפשרויות ניווט" }));
+  }
+
+  it("closes sheet on Escape key", () => {
+    render(<Sidebar items={FULL_ITEMS} />);
+    openSheet();
+    expect(screen.getByRole("dialog", { name: "ניווט משני" })).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    expect(screen.queryByRole("dialog", { name: "ניווט משני" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "עוד אפשרויות ניווט" })).toHaveAttribute(
+      "aria-expanded",
+      "false"
+    );
+  });
+
+  it("closes sheet when scrim is clicked", () => {
+    render(<Sidebar items={FULL_ITEMS} />);
+    openSheet();
+
+    fireEvent.click(screen.getByTestId("mobile-more-scrim"));
+
+    expect(screen.queryByRole("dialog", { name: "ניווט משני" })).not.toBeInTheDocument();
+  });
+
+  it("closes sheet when a sheet item is tapped", () => {
+    render(<Sidebar items={FULL_ITEMS} />);
+    openSheet();
+
+    const sheet = screen.getByRole("dialog", { name: "ניווט משני" });
+    const reportsLink = sheet.querySelector('a[href="/dashboard/reports"]') as HTMLElement;
+    fireEvent.click(reportsLink);
+
+    expect(screen.queryByRole("dialog", { name: "ניווט משני" })).not.toBeInTheDocument();
+  });
+
+  it("closes sheet when pathname changes", () => {
+    const { rerender } = render(<Sidebar items={FULL_ITEMS} />);
+    openSheet();
+    expect(screen.getByRole("dialog", { name: "ניווט משני" })).toBeInTheDocument();
+
+    // Simulate route change by flipping the mock and re-rendering
+    mockPathname = "/dashboard/reports";
+    rerender(<Sidebar items={FULL_ITEMS} />);
+
+    expect(screen.queryByRole("dialog", { name: "ניווט משני" })).not.toBeInTheDocument();
+  });
+});
