@@ -70,7 +70,7 @@ export function EmployeeListClient({ employees, page = 1, totalPages = 1 }: Empl
     <>
       {/* Desktop table */}
       <div
-        className="hidden overflow-hidden rounded-lg border bg-white sm:block"
+        className="hidden overflow-x-auto rounded-lg border bg-white sm:block"
         style={{
           borderColor: "var(--border)",
           boxShadow: "var(--shadow-sm)",

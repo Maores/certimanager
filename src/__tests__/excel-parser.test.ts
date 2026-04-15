@@ -186,21 +186,21 @@ describe("normalizeCertTypeName", () => {
   });
 
   describe("PFI normalization", () => {
-    it('normalizes "PFI" to ["PFI"]', () => {
-      expect(normalizeCertTypeName("PFI")).toEqual(["PFI"]);
+    it('normalizes "PFI" to ["חוצה צפון (PFI)"]', () => {
+      expect(normalizeCertTypeName("PFI")).toEqual(["חוצה צפון (PFI)"]);
     });
 
     it("is case insensitive — lowercase", () => {
-      expect(normalizeCertTypeName("pfi")).toEqual(["PFI"]);
+      expect(normalizeCertTypeName("pfi")).toEqual(["חוצה צפון (PFI)"]);
     });
 
     it("is case insensitive — mixed case", () => {
-      expect(normalizeCertTypeName("Pfi")).toEqual(["PFI"]);
-      expect(normalizeCertTypeName("pFi")).toEqual(["PFI"]);
+      expect(normalizeCertTypeName("Pfi")).toEqual(["חוצה צפון (PFI)"]);
+      expect(normalizeCertTypeName("pFi")).toEqual(["חוצה צפון (PFI)"]);
     });
 
     it("handles PFI with surrounding whitespace", () => {
-      expect(normalizeCertTypeName("  PFI  ")).toEqual(["PFI"]);
+      expect(normalizeCertTypeName("  PFI  ")).toEqual(["חוצה צפון (PFI)"]);
     });
   });
 
@@ -480,7 +480,7 @@ describe("parseExcel", () => {
 
     const result = parseExcel(buf);
     expect(result.certTypeNames).toContain("נת״ע");
-    expect(result.certTypeNames).toContain("PFI");
+    expect(result.certTypeNames).toContain("חוצה צפון (PFI)");
   });
 
   it("finds header row even if there are title rows before it", () => {

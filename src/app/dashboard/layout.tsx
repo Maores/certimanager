@@ -40,7 +40,7 @@ export default async function DashboardLayout({
     <div dir="rtl" className="min-h-screen bg-background flex">
       <Sidebar items={navItems} isGuest={guest} />
 
-      <div className="flex-1 flex flex-col min-h-screen">
+      <div className="flex-1 flex flex-col min-h-screen min-w-0">
         {/* Header */}
         <header aria-label="סרגל עליון" className="h-14 bg-white border-b border-border flex items-center justify-between px-4 sm:px-6 sticky top-0 z-20">
           <h2 className="text-lg font-bold text-primary md:hidden tracking-tight">

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, UserPlus, Users } from "lucide-react";
+import { Trash2, UserPlus, UserCheck, Users } from "lucide-react";
 import type { CourseCandidate, CandidateStatus } from "@/types/database";
 import { CANDIDATE_STATUSES } from "@/types/database";
 import {
@@ -28,6 +28,13 @@ export function CandidatesTable({ candidates }: CandidatesTableProps) {
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!success) return;
+    const t = setTimeout(() => setSuccess(null), 7000);
+    return () => clearTimeout(t);
+  }, [success]);
   const [promoteDialog, setPromoteDialog] = useState<{
     open: boolean;
     ids: string[];
@@ -109,13 +116,24 @@ export function CandidatesTable({ candidates }: CandidatesTableProps) {
 
   async function handleConfirmPromote() {
     setError(null);
+    setSuccess(null);
     try {
       if (promoteDialog.ids.length === 1) {
-        await promoteCandidate(promoteDialog.ids[0]);
+        const r = await promoteCandidate(promoteDialog.ids[0]);
+        setSuccess(
+          r.status === "already_employee"
+            ? `${r.name} כבר קיים ברשימת העובדים`
+            : `${r.name} נוסף בהצלחה לרשימת העובדים`
+        );
       } else {
         const result = await promoteCandidates(promoteDialog.ids);
+        const parts: string[] = [];
+        if (result.promoted > 0) parts.push(`קודמו ${result.promoted} מועמדים`);
+        if (result.already_employee > 0) parts.push(`${result.already_employee} כבר היו עובדים`);
         if (result.errors.length > 0) {
-          setError(`קודמו ${result.promoted} מועמדים. שגיאות: ${result.errors.join(", ")}`);
+          setError(`${parts.join(", ") || "ללא הצלחות"}. שגיאות: ${result.errors.join(", ")}`);
+        } else {
+          setSuccess(parts.join(", ") || "לא בוצעו שינויים");
         }
       }
       setPromoteDialog({ open: false, ids: [], names: [] });
@@ -132,6 +150,20 @@ export function CandidatesTable({ candidates }: CandidatesTableProps) {
       {error && (
         <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
+        </div>
+      )}
+
+      {success && (
+        <div role="status" className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 flex items-center justify-between gap-3">
+          <span>{success}</span>
+          <button
+            type="button"
+            onClick={() => setSuccess(null)}
+            aria-label="סגור"
+            className="rounded p-0.5 text-green-600 hover:bg-green-100 cursor-pointer"
+          >
+            ✕
+          </button>
         </div>
       )}
 
@@ -225,15 +257,25 @@ export function CandidatesTable({ candidates }: CandidatesTableProps) {
                 </td>
                 <td className="px-3 py-2.5">
                   <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => handlePromoteSingle(c.id)}
-                      title="הוסף כעובד"
-                      aria-label={`קדם ${c.first_name} ${c.last_name} לעובד`}
-                      className="rounded-lg p-1.5 text-gray-400 hover:bg-green-50 hover:text-green-600 transition-colors cursor-pointer"
-                    >
-                      <UserPlus className="h-4 w-4" />
-                    </button>
+                    {c.is_employee ? (
+                      <span
+                        title="כבר עובד"
+                        aria-label={`${c.first_name} ${c.last_name} כבר עובד`}
+                        className="rounded-lg p-1.5 text-green-600"
+                      >
+                        <UserCheck className="h-4 w-4" />
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handlePromoteSingle(c.id)}
+                        title="הוסף כעובד"
+                        aria-label={`קדם ${c.first_name} ${c.last_name} לעובד`}
+                        className="rounded-lg p-1.5 text-gray-400 hover:bg-green-50 hover:text-green-600 transition-colors cursor-pointer"
+                      >
+                        <UserPlus className="h-4 w-4" />
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => handleDelete(c.id)}

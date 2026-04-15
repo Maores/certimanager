@@ -27,6 +27,11 @@ export function CandidateForm({ action, certTypes }: CandidateFormProps) {
     try {
       await action(formData);
     } catch (e) {
+      // Next.js signals redirect() via a thrown error with digest "NEXT_REDIRECT;...".
+      // Re-throw so Next.js intercepts it and performs the navigation.
+      if (e instanceof Error && "digest" in e && typeof e.digest === "string" && e.digest.startsWith("NEXT_REDIRECT")) {
+        throw e;
+      }
       const msg = e instanceof Error ? e.message : "שגיאה בשמירת הנתונים. נסה שוב";
       setError(msg);
       setLoading(false);
