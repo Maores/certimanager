@@ -14,6 +14,25 @@
 
 ---
 
+## ⚠ Session Handoff (2026-04-15 18:10 GMT+3)
+
+The previous session stopped mid-Task-1 due to context-window pressure and a Haiku-subagent misstep. Clean state at the end of that session:
+
+- **HEAD:** `ef72fa9` (plan-fix commit this block) — or whatever the latest commit is after reading this note.
+- **Branch:** `fix/mobile-nav-all-tabs`, nothing uncommitted, nothing pushed.
+- **What's done:** spec (`ef3020c`), plan (`2d37824`), and this plan-level bug-fix.
+- **What's next:** Task 1 (scaffolding) still needs doing. Preflight should pass cleanly.
+
+**Plan defect found and fixed in place:** Task 1's original smoke test used `screen.getByRole("navigation", { name: "ניווט ראשי" })`, but `sidebar.tsx` currently renders TWO `<nav>` elements with that exact label (the desktop internal nav at line 66 and the mobile bottom bar at line 110). In jsdom, both render regardless of media queries, so `getByRole` throws "Found multiple elements". Task 1's Step 1 below is now updated to use `getAllByRole(...)[0]` — this matches the pattern Task 2 already uses. No other plan changes are needed.
+
+**Latent a11y note (not blocking):** Having two nav landmarks share an identical `aria-label` is suboptimal. A follow-up PR could rename the desktop inner nav's label (e.g., "תפריט צד") to distinguish it. Out of scope for this fix — flagging for later.
+
+**Subagent lesson for the next run:** if a subagent encounters something unexpected (like a test query that doesn't match the DOM), it must report `BLOCKED` rather than modifying files outside its stated scope. The implementer prompt already says this; be explicit about it when re-dispatching.
+
+---
+
+---
+
 ## File Structure
 
 | File | Responsibility | Action |
@@ -76,9 +95,14 @@ describe("Sidebar — smoke", () => {
     mockPathname = "/dashboard";
   });
 
-  it("renders the desktop nav container", () => {
+  it("renders at least one nav landmark labelled 'ניווט ראשי'", () => {
     render(<Sidebar items={FULL_ITEMS} />);
-    expect(screen.getByRole("navigation", { name: "ניווט ראשי" })).toBeInTheDocument();
+    // NOTE: current sidebar.tsx renders TWO such navs (desktop inner + mobile bottom).
+    // We tolerate both and assert at least one exists. Task 2's tests select mobile
+    // specifically via navs[navs.length - 1].
+    const navs = screen.getAllByRole("navigation", { name: "ניווט ראשי" });
+    expect(navs.length).toBeGreaterThan(0);
+    expect(navs[0]).toBeInTheDocument();
   });
 });
 ```
@@ -86,9 +110,9 @@ describe("Sidebar — smoke", () => {
 - [ ] **Step 2: Run test to verify it passes**
 
 Run: `npm test -- --run src/__tests__/sidebar.test.tsx`
-Expected: PASS (Sidebar already renders a nav with `aria-label="ניווט ראשי"` on desktop).
+Expected: PASS (Sidebar renders at least one `<nav aria-label="ניווט ראשי">`).
 
-> ⚠ **If this fails**, check: (a) the `@/` alias resolves (it should, per `vitest.config.ts`); (b) `Sidebar` exports a default component; (c) the existing markup uses `aria-label="ניווט ראשי"`. Fix scaffolding before continuing.
+> ⚠ **If this fails**, check: (a) the `@/` alias resolves (it should, per `vitest.config.ts`); (b) `Sidebar` exports a default component; (c) the existing markup uses `aria-label="ניווט ראשי"`. **Do NOT modify `src/__tests__/setup.ts` to work around rendering quirks** — the component renders both desktop and mobile branches in jsdom and that's fine. If the query fails for a different reason, report BLOCKED.
 
 - [ ] **Step 3: Commit**
 
