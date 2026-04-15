@@ -81,3 +81,36 @@ describe("Sidebar — mobile nav: 4 pinned + עוד", () => {
     expect(sheet.querySelector('a[href="/dashboard/reports"]')).toBeInTheDocument();
   });
 });
+
+describe("Sidebar — guest & overflow edge cases", () => {
+  beforeEach(() => {
+    mockPathname = "/dashboard";
+  });
+
+  it("hides /dashboard/import and /dashboard/candidates from pinned AND sheet when isGuest", () => {
+    render(<Sidebar items={FULL_ITEMS} isGuest />);
+
+    // Not in pinned row
+    expect(document.querySelector('a[href="/dashboard/import"]')).not.toBeInTheDocument();
+    expect(document.querySelector('a[href="/dashboard/candidates"]')).not.toBeInTheDocument();
+
+    // Also not in sheet after opening
+    fireEvent.click(screen.getByRole("button", { name: "עוד אפשרויות ניווט" }));
+    const sheet = screen.getByRole("dialog", { name: "ניווט משני" });
+    expect(sheet.querySelector('a[href="/dashboard/import"]')).not.toBeInTheDocument();
+    expect(sheet.querySelector('a[href="/dashboard/candidates"]')).not.toBeInTheDocument();
+
+    // Sheet still contains the remaining 2 (cert-types, reports)
+    expect(sheet.querySelector('a[href="/dashboard/cert-types"]')).toBeInTheDocument();
+    expect(sheet.querySelector('a[href="/dashboard/reports"]')).toBeInTheDocument();
+  });
+
+  it("hides the 'עוד' button when there are no overflow items", () => {
+    const pinnedOnly: NavItem[] = FULL_ITEMS.filter((i) =>
+      ["/dashboard", "/dashboard/employees", "/dashboard/certifications", "/dashboard/tasks"].includes(i.href)
+    );
+    render(<Sidebar items={pinnedOnly} />);
+
+    expect(screen.queryByRole("button", { name: "עוד אפשרויות ניווט" })).not.toBeInTheDocument();
+  });
+});
