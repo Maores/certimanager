@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
 import {
   LayoutDashboard,
   Users,
@@ -11,8 +12,16 @@ import {
   BarChart3,
   ClipboardList,
   GraduationCap,
+  MoreHorizontal,
   type LucideIcon,
 } from "lucide-react";
+
+const PINNED_MOBILE_HREFS = [
+  "/dashboard",
+  "/dashboard/employees",
+  "/dashboard/certifications",
+  "/dashboard/tasks",
+];
 
 export interface NavItem {
   label: string;
@@ -47,6 +56,36 @@ export default function Sidebar({ items, isGuest }: SidebarProps) {
   const filteredItems = isGuest
     ? items.filter(item => !["/dashboard/import", "/dashboard/candidates"].includes(item.href))
     : items;
+
+  const pinnedItems = filteredItems.filter((i) => PINNED_MOBILE_HREFS.includes(i.href));
+  const overflowItems = filteredItems.filter((i) => !PINNED_MOBILE_HREFS.includes(i.href));
+  const hasOverflow = overflowItems.length > 0;
+  const overflowActive = overflowItems.some((i) => pathname.startsWith(i.href));
+
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const moreBtnRef = useRef<HTMLButtonElement>(null);
+  const firstSheetLinkRef = useRef<HTMLAnchorElement>(null);
+
+  // Close sheet on route change
+  useEffect(() => {
+    setSheetOpen(false);
+  }, [pathname]);
+
+  // Escape key + focus management while open
+  useEffect(() => {
+    if (!sheetOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSheetOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    firstSheetLinkRef.current?.focus();
+    return () => window.removeEventListener("keydown", onKey);
+  }, [sheetOpen]);
+
+  // Return focus to trigger when closing
+  useEffect(() => {
+    if (!sheetOpen) moreBtnRef.current?.focus({ preventScroll: true });
+  }, [sheetOpen]);
 
   return (
     <>
@@ -107,13 +146,12 @@ export default function Sidebar({ items, isGuest }: SidebarProps) {
       </aside>
 
       {/* Mobile bottom tab bar */}
-      <nav aria-label="ניווט ראשי" className="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-sm border-t border-border z-50 md:hidden safe-area-bottom">
+      <nav
+        aria-label="ניווט ראשי"
+        className="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-sm border-t border-border z-50 md:hidden safe-area-bottom"
+      >
         <div className="flex items-center h-16 px-2">
-          {items
-            .filter(item =>
-              ["/dashboard", "/dashboard/employees", "/dashboard/certifications", "/dashboard/tasks", "/dashboard/reports"].includes(item.href)
-            )
-            .map((item) => {
+          {pinnedItems.map((item) => {
             const isActive =
               item.href === "/dashboard"
                 ? pathname === "/dashboard"
@@ -131,10 +169,7 @@ export default function Sidebar({ items, isGuest }: SidebarProps) {
                   ${isActive ? "text-primary" : "text-muted-foreground"}
                 `}
               >
-                <Icon
-                  className="h-5 w-5"
-                  strokeWidth={isActive ? 2.25 : 1.75}
-                />
+                <Icon className="h-5 w-5" strokeWidth={isActive ? 2.25 : 1.75} />
                 <span
                   className={`text-[10px] truncate leading-none max-w-full px-0.5 ${
                     isActive ? "font-semibold" : "font-medium"
@@ -145,8 +180,87 @@ export default function Sidebar({ items, isGuest }: SidebarProps) {
               </Link>
             );
           })}
+
+          {hasOverflow && (
+            <button
+              ref={moreBtnRef}
+              type="button"
+              aria-label="עוד אפשרויות ניווט"
+              aria-expanded={sheetOpen}
+              aria-controls="mobile-more-sheet"
+              onClick={() => setSheetOpen((v) => !v)}
+              className={`
+                flex flex-col items-center justify-center gap-0.5 min-w-0 flex-1 py-1.5
+                transition-colors duration-150
+                ${overflowActive || sheetOpen ? "text-primary" : "text-muted-foreground"}
+              `}
+            >
+              <MoreHorizontal
+                className="h-5 w-5"
+                strokeWidth={overflowActive || sheetOpen ? 2.25 : 1.75}
+              />
+              <span
+                className={`text-[10px] truncate leading-none max-w-full px-0.5 ${
+                  overflowActive || sheetOpen ? "font-semibold" : "font-medium"
+                }`}
+              >
+                עוד
+              </span>
+            </button>
+          )}
         </div>
       </nav>
+
+      {hasOverflow && sheetOpen && (
+        <>
+          <div
+            data-testid="mobile-more-scrim"
+            aria-hidden="true"
+            onClick={() => setSheetOpen(false)}
+            className="fixed inset-0 bottom-16 bg-black/40 z-40 md:hidden animate-fade-in"
+          />
+          <div
+            id="mobile-more-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-label="ניווט משני"
+            className="fixed bottom-16 inset-x-0 z-[60] md:hidden bg-white border-t border-border rounded-t-2xl shadow-lg pb-[env(safe-area-inset-bottom)] animate-fade-in"
+          >
+            <div className="flex justify-center pt-2 pb-1">
+              <div className="w-8 h-1 rounded-full bg-gray-300" />
+            </div>
+            <div className="grid grid-cols-4 gap-1 p-3" dir="rtl">
+              {overflowItems.map((item, idx) => {
+                const isActive = pathname.startsWith(item.href);
+                const Icon = getIcon(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    ref={idx === 0 ? firstSheetLinkRef : undefined}
+                    aria-current={isActive ? "page" : undefined}
+                    onClick={() => setSheetOpen(false)}
+                    className={`
+                      flex flex-col items-center justify-center gap-1 min-h-16 rounded-lg py-2 px-1
+                      transition-colors
+                      ${isActive ? "text-primary bg-primary-light" : "text-muted-foreground hover:bg-gray-50"}
+                    `}
+                  >
+                    <Icon className="h-5 w-5" strokeWidth={isActive ? 2.25 : 1.75} />
+                    <span
+                      className={`text-[10px] leading-tight text-center ${
+                        isActive ? "font-semibold" : "font-medium"
+                      }`}
+                    >
+                      {item.label}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 }
