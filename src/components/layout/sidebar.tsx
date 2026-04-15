@@ -82,8 +82,13 @@ export default function Sidebar({ items, isGuest }: SidebarProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [sheetOpen]);
 
-  // Return focus to trigger when closing
+  // Return focus to trigger when closing (skip on initial mount)
+  const didMountRef = useRef(false);
   useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
     if (!sheetOpen) moreBtnRef.current?.focus({ preventScroll: true });
   }, [sheetOpen]);
 
