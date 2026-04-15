@@ -51,6 +51,11 @@ function getIcon(href: string): LucideIcon {
   return iconMap[segment] || LayoutDashboard;
 }
 
+function isActiveHref(pathname: string, href: string): boolean {
+  if (href === "/dashboard") return pathname === "/dashboard";
+  return pathname === href || pathname.startsWith(href + "/");
+}
+
 export default function Sidebar({ items, isGuest }: SidebarProps) {
   const pathname = usePathname();
   const filteredItems = isGuest
@@ -60,7 +65,7 @@ export default function Sidebar({ items, isGuest }: SidebarProps) {
   const pinnedItems = filteredItems.filter((i) => PINNED_MOBILE_HREFS.includes(i.href));
   const overflowItems = filteredItems.filter((i) => !PINNED_MOBILE_HREFS.includes(i.href));
   const hasOverflow = overflowItems.length > 0;
-  const overflowActive = overflowItems.some((i) => pathname.startsWith(i.href));
+  const overflowActive = overflowItems.some((i) => isActiveHref(pathname, i.href));
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const moreBtnRef = useRef<HTMLButtonElement>(null);
@@ -109,10 +114,7 @@ export default function Sidebar({ items, isGuest }: SidebarProps) {
         {/* Navigation */}
         <nav aria-label="ניווט ראשי" className="flex-1 p-3 space-y-0.5">
           {filteredItems.map((item) => {
-            const isActive =
-              item.href === "/dashboard"
-                ? pathname === "/dashboard"
-                : pathname.startsWith(item.href);
+            const isActive = isActiveHref(pathname, item.href);
             const Icon = getIcon(item.href);
 
             return (
@@ -157,10 +159,7 @@ export default function Sidebar({ items, isGuest }: SidebarProps) {
       >
         <div className="flex items-center h-16 px-2">
           {pinnedItems.map((item) => {
-            const isActive =
-              item.href === "/dashboard"
-                ? pathname === "/dashboard"
-                : pathname.startsWith(item.href);
+            const isActive = isActiveHref(pathname, item.href);
             const Icon = getIcon(item.href);
 
             return (
@@ -192,7 +191,7 @@ export default function Sidebar({ items, isGuest }: SidebarProps) {
               type="button"
               aria-label="עוד אפשרויות ניווט"
               aria-expanded={sheetOpen}
-              aria-controls="mobile-more-sheet"
+              aria-controls={sheetOpen ? "mobile-more-sheet" : undefined}
               onClick={() => setSheetOpen((v) => !v)}
               className={`
                 flex flex-col items-center justify-center gap-0.5 min-w-0 flex-1 py-1.5
@@ -229,6 +228,20 @@ export default function Sidebar({ items, isGuest }: SidebarProps) {
             role="dialog"
             aria-modal="true"
             aria-label="ניווט משני"
+            onKeyDown={(e) => {
+              if (e.key !== "Tab") return;
+              const focusables = e.currentTarget.querySelectorAll<HTMLElement>("a[href]");
+              if (focusables.length === 0) return;
+              const first = focusables[0];
+              const last = focusables[focusables.length - 1];
+              if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault();
+                last.focus();
+              } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault();
+                first.focus();
+              }
+            }}
             className="fixed bottom-16 inset-x-0 z-[60] md:hidden bg-white border-t border-border rounded-t-2xl shadow-lg pb-[env(safe-area-inset-bottom)] animate-fade-in"
           >
             <div className="flex justify-center pt-2 pb-1">
@@ -236,7 +249,7 @@ export default function Sidebar({ items, isGuest }: SidebarProps) {
             </div>
             <div className="grid grid-cols-4 gap-1 p-3" dir="rtl">
               {overflowItems.map((item, idx) => {
-                const isActive = pathname.startsWith(item.href);
+                const isActive = isActiveHref(pathname, item.href);
                 const Icon = getIcon(item.href);
                 return (
                   <Link

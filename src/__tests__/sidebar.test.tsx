@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 
 // Mock next/navigation before importing the component.
 // Use a mutable variable so individual tests can override the pathname.
@@ -56,10 +56,10 @@ describe("Sidebar — mobile nav: 4 pinned + עוד", () => {
     expect(mobileNav.querySelector('a[href="/dashboard/certifications"]')).toBeInTheDocument();
     expect(mobileNav.querySelector('a[href="/dashboard/tasks"]')).toBeInTheDocument();
 
-    // "עוד" trigger exists with correct aria
+    // "עוד" trigger exists with correct aria (aria-controls is asserted
+    // in the dedicated "aria-controls only points to existing sheet" suite).
     const moreBtn = screen.getByRole("button", { name: "עוד אפשרויות ניווט" });
     expect(moreBtn).toHaveAttribute("aria-expanded", "false");
-    expect(moreBtn).toHaveAttribute("aria-controls", "mobile-more-sheet");
   });
 
   it("opens the sheet and exposes the 4 overflow items when 'עוד' is clicked", () => {
@@ -186,5 +186,82 @@ describe("Sidebar — sheet close triggers", () => {
     rerender(<Sidebar items={FULL_ITEMS} />);
 
     expect(screen.queryByRole("dialog", { name: "ניווט משני" })).not.toBeInTheDocument();
+  });
+});
+
+describe("Sidebar — prefix-collision active match", () => {
+  it("does NOT highlight 'עוד' when pathname prefix-collides with an overflow href (reports-archive)", () => {
+    mockPathname = "/dashboard/reports-archive";
+    render(<Sidebar items={FULL_ITEMS} />);
+
+    const moreBtn = screen.getByRole("button", { name: "עוד אפשרויות ניווט" });
+    expect(moreBtn.className).not.toContain("text-primary");
+    expect(moreBtn.className).toContain("text-muted-foreground");
+  });
+
+  it("DOES highlight 'עוד' for legitimate sub-routes of an overflow href (/dashboard/reports/123)", () => {
+    mockPathname = "/dashboard/reports/123";
+    render(<Sidebar items={FULL_ITEMS} />);
+
+    const moreBtn = screen.getByRole("button", { name: "עוד אפשרויות ניווט" });
+    expect(moreBtn.className).toContain("text-primary");
+  });
+});
+
+describe("Sidebar — aria-controls only points to existing sheet", () => {
+  beforeEach(() => {
+    mockPathname = "/dashboard";
+  });
+
+  it("omits aria-controls on 'עוד' while the sheet is closed", () => {
+    render(<Sidebar items={FULL_ITEMS} />);
+    const moreBtn = screen.getByRole("button", { name: "עוד אפשרויות ניווט" });
+    expect(moreBtn).not.toHaveAttribute("aria-controls");
+  });
+
+  it("sets aria-controls='mobile-more-sheet' once the sheet is open", () => {
+    render(<Sidebar items={FULL_ITEMS} />);
+    fireEvent.click(screen.getByRole("button", { name: "עוד אפשרויות ניווט" }));
+    const moreBtn = screen.getByRole("button", { name: "עוד אפשרויות ניווט" });
+    expect(moreBtn).toHaveAttribute("aria-controls", "mobile-more-sheet");
+    expect(document.getElementById("mobile-more-sheet")).toBeInTheDocument();
+  });
+});
+
+describe("Sidebar — focus trap inside the sheet dialog", () => {
+  beforeEach(() => {
+    mockPathname = "/dashboard";
+  });
+
+  it("cycles focus from last sheet link back to first on Tab", () => {
+    render(<Sidebar items={FULL_ITEMS} />);
+    fireEvent.click(screen.getByRole("button", { name: "עוד אפשרויות ניווט" }));
+
+    const sheet = screen.getByRole("dialog", { name: "ניווט משני" });
+    const links = within(sheet).getAllByRole("link");
+    const first = links[0] as HTMLElement;
+    const last = links[links.length - 1] as HTMLElement;
+
+    last.focus();
+    expect(document.activeElement).toBe(last);
+
+    fireEvent.keyDown(sheet, { key: "Tab" });
+    expect(document.activeElement).toBe(first);
+  });
+
+  it("cycles focus from first sheet link back to last on Shift+Tab", () => {
+    render(<Sidebar items={FULL_ITEMS} />);
+    fireEvent.click(screen.getByRole("button", { name: "עוד אפשרויות ניווט" }));
+
+    const sheet = screen.getByRole("dialog", { name: "ניווט משני" });
+    const links = within(sheet).getAllByRole("link");
+    const first = links[0] as HTMLElement;
+    const last = links[links.length - 1] as HTMLElement;
+
+    first.focus();
+    expect(document.activeElement).toBe(first);
+
+    fireEvent.keyDown(sheet, { key: "Tab", shiftKey: true });
+    expect(document.activeElement).toBe(last);
   });
 });
