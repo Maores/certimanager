@@ -114,3 +114,21 @@ describe("Sidebar — guest & overflow edge cases", () => {
     expect(screen.queryByRole("button", { name: "עוד אפשרויות ניווט" })).not.toBeInTheDocument();
   });
 });
+
+describe("Sidebar — active highlight on 'עוד'", () => {
+  it("renders 'עוד' with active styling when pathname is in overflow set", () => {
+    mockPathname = "/dashboard/reports";
+    render(<Sidebar items={FULL_ITEMS} />);
+
+    const moreBtn = screen.getByRole("button", { name: "עוד אפשרויות ניווט" });
+    expect(moreBtn.className).toContain("text-primary");
+  });
+
+  it("renders 'עוד' with inactive styling when pathname is in pinned set", () => {
+    mockPathname = "/dashboard/employees";
+    render(<Sidebar items={FULL_ITEMS} />);
+
+    const moreBtn = screen.getByRole("button", { name: "עוד אפשרויות ניווט" });
+    expect(moreBtn.className).toContain("text-muted-foreground");
+  });
+});
