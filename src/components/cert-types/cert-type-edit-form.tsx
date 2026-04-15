@@ -23,6 +23,10 @@ export function CertTypeEditForm({ action, defaultValues }: Props) {
     try {
       await action(formData);
     } catch (e) {
+      // Re-throw Next.js redirect signals so navigation proceeds
+      if (e instanceof Error && "digest" in e && typeof e.digest === "string" && e.digest.startsWith("NEXT_REDIRECT")) {
+        throw e;
+      }
       const msg = e instanceof Error ? e.message : "שגיאה בעדכון סוג הסמכה";
       setError(msg);
     } finally {

@@ -94,7 +94,10 @@ export async function deleteCandidate(id: string) {
   revalidatePath("/dashboard/candidates");
 }
 
-export async function promoteCandidate(id: string) {
+export async function promoteCandidate(id: string): Promise<{
+  status: "promoted" | "already_employee";
+  name: string;
+}> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
@@ -116,6 +119,12 @@ export async function promoteCandidate(id: string) {
     .eq("manager_id", user.id)
     .eq("employee_number", candidate.id_number)
     .maybeSingle();
+
+  // Detect redundant re-promotion: employee already exists AND candidate was
+  // already marked "הוסמך" before this call. Real promotions (new employee,
+  // or existing employee whose candidate status wasn't yet "הוסמך") proceed normally.
+  const wasAlreadyPromoted =
+    Boolean(existingEmp) && candidate.status === "הוסמך";
 
   let employeeId: string;
 
@@ -140,7 +149,7 @@ export async function promoteCandidate(id: string) {
 
     employeeId = existingEmp.id;
   } else {
-    // Create new employee
+    // Create new employee. employees.phone is NOT NULL DEFAULT '' — coerce null to ''.
     const { data: newEmp, error: empErr } = await supabase
       .from("employees")
       .insert({
@@ -148,7 +157,7 @@ export async function promoteCandidate(id: string) {
         first_name: candidate.first_name,
         last_name: candidate.last_name,
         employee_number: candidate.id_number,
-        phone: candidate.phone,
+        phone: candidate.phone ?? "",
         status: "פעיל",
       })
       .select("id")
@@ -178,15 +187,25 @@ export async function promoteCandidate(id: string) {
 
   revalidatePath("/dashboard/candidates");
   revalidatePath("/dashboard/employees");
+
+  return {
+    status: wasAlreadyPromoted ? "already_employee" : "promoted",
+    name: `${candidate.first_name} ${candidate.last_name}`,
+  };
 }
 
 export async function promoteCandidates(ids: string[]) {
-  const results = { promoted: 0, errors: [] as string[] };
+  const results = {
+    promoted: 0,
+    already_employee: 0,
+    errors: [] as string[],
+  };
 
   for (const id of ids) {
     try {
-      await promoteCandidate(id);
-      results.promoted++;
+      const r = await promoteCandidate(id);
+      if (r.status === "already_employee") results.already_employee++;
+      else results.promoted++;
     } catch (e) {
       results.errors.push(`${id}: ${e instanceof Error ? e.message : "שגיאה"}`);
     }

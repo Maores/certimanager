@@ -39,14 +39,17 @@ export default async function TasksPage({
 
   if (!user) redirect("/login");
 
-  // Fetch tasks with employee names
+  // Fetch tasks with employee names.
+  // Secondary sort by `id` makes the order stable for rows sharing a `created_at`
+  // second — otherwise a status update can reshuffle sibling rows.
   let query = supabase
     .from("employee_tasks")
     .select(
       "id, employee_id, description, responsible, status, created_at, updated_at, employees!inner(id, first_name, last_name, manager_id)"
     )
     .eq("employees.manager_id", user.id)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: true });
 
   if (statusFilter) {
     query = query.eq("status", statusFilter);
@@ -65,21 +68,21 @@ export default async function TasksPage({
     .eq("manager_id", user.id)
     .order("first_name");
 
-  // Build unique responsible persons for filter
-  const allResponsible = [
-    ...new Set(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (tasks || []).map((t: any) => t.responsible).filter(Boolean)
-    ),
-  ] as string[];
-
-  // Count by status (from all tasks, ignoring filters - re-fetch counts)
+  // Count by status + build responsible list (from unfiltered tasks so the
+  // dropdown keeps the full option set regardless of the current filter).
   const { data: allTasks } = await supabase
     .from("employee_tasks")
     .select(
-      "status, employees!inner(manager_id)"
+      "status, responsible, employees!inner(manager_id)"
     )
     .eq("employees.manager_id", user.id);
+
+  const allResponsible = [
+    ...new Set(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (allTasks || []).map((t: any) => t.responsible).filter(Boolean)
+    ),
+  ] as string[];
 
   const counts = {
     "פתוח": 0,

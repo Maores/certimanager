@@ -254,7 +254,7 @@ export default async function CertificationsPage({
         <>
           {/* Desktop table */}
           <div
-            className="hidden md:block rounded-xl overflow-hidden"
+            className="hidden md:block rounded-xl overflow-x-auto"
             style={{
               backgroundColor: "#fff",
               border: "1px solid #e2e8f0",
