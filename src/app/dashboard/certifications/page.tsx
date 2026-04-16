@@ -79,6 +79,7 @@ export default async function CertificationsPage({
         id,
         issue_date,
         expiry_date,
+        next_refresh_date,
         image_url,
         notes,
         created_at,
@@ -111,7 +112,7 @@ export default async function CertificationsPage({
       : "לא ידוע",
     employee_department: cert.employees?.department || "",
     cert_type_name: cert.cert_types?.name || "לא ידוע",
-    status: getCertStatus(cert.expiry_date),
+    status: getCertStatus(cert.expiry_date, cert.next_refresh_date),
   }));
 
   const filtered = allCerts.filter((cert) => {
@@ -278,6 +279,9 @@ export default async function CertificationsPage({
                     תאריך תפוגה
                   </th>
                   <th scope="col" className="text-right px-6 py-3.5 text-sm font-medium" style={{ color: "#64748b" }}>
+                    מועד רענון הבא
+                  </th>
+                  <th scope="col" className="text-right px-6 py-3.5 text-sm font-medium" style={{ color: "#64748b" }}>
                     סטטוס
                   </th>
                   <th scope="col" className="text-right px-6 py-3.5 text-sm font-medium" style={{ color: "#64748b" }}>
@@ -320,6 +324,9 @@ export default async function CertificationsPage({
                       </td>
                       <td className="px-6 py-4 text-sm" style={{ color: "#64748b" }}>
                         {formatDateHe(cert.expiry_date)}
+                      </td>
+                      <td className="px-6 py-4 text-sm" style={{ color: "#64748b" }}>
+                        {formatDateHe(cert.next_refresh_date)}
                       </td>
                       <td className="px-6 py-4">
                         <span
@@ -397,6 +404,14 @@ export default async function CertificationsPage({
                         {formatDateHe(cert.expiry_date)}
                       </span>
                     </div>
+                    {cert.next_refresh_date && (
+                      <div>
+                        <span style={{ color: "#94a3b8" }}>מועד רענון הבא: </span>
+                        <span style={{ color: "#0f172a" }}>
+                          {formatDateHe(cert.next_refresh_date)}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {cert.image_url && (
