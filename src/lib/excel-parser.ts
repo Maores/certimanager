@@ -137,6 +137,76 @@ export function normalizeStatus(raw: string | undefined, defaultStatus = "פעי
   return { value: defaultStatus, warning: true };
 }
 
+/**
+ * Parse a cell value from xlsx into a "YYYY-MM-DD" string or null.
+ * Accepts Excel date serials (number), Date objects, and common string formats
+ * including ISO (YYYY-MM-DD) and Hebrew-locale DD/MM/YYYY (also .- separators).
+ * Returns null for empty, invalid, or impossible dates.
+ */
+export function parseExcelDate(raw: unknown): string | null {
+  if (raw === null || raw === undefined) return null;
+
+  // Date object: xlsx with cellDates:true produces these.
+  if (raw instanceof Date) {
+    if (isNaN(raw.getTime())) return null;
+    return formatDateLocal(raw);
+  }
+
+  // Excel date serial (number): days since 1899-12-30 (Excel's epoch).
+  if (typeof raw === "number") {
+    if (!isFinite(raw) || raw <= 0) return null;
+    // Excel serial 1 = 1900-01-01 (actually 1899-12-31 due to the 1900 leap bug).
+    // The well-known formula: days since 1899-12-30.
+    const ms = Math.round((raw - 25569) * 86400 * 1000);
+    const d = new Date(ms);
+    if (isNaN(d.getTime())) return null;
+    return formatDateLocalUTC(d);
+  }
+
+  // String: trim, reject empty/dash/whitespace, then try known formats.
+  const s = String(raw).trim();
+  if (!s || s === "-") return null;
+
+  // ISO-like: YYYY-MM-DD (optionally with time suffix)
+  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+  if (iso) {
+    const [, y, m, d] = iso;
+    return validateYmd(+y, +m, +d);
+  }
+
+  // DD/MM/YYYY or DD.MM.YYYY or DD-MM-YYYY (Hebrew-locale common formats)
+  const dmy = /^(\d{1,2})[\/\.\-](\d{1,2})[\/\.\-](\d{4})$/.exec(s);
+  if (dmy) {
+    const [, d, m, y] = dmy;
+    return validateYmd(+y, +m, +d);
+  }
+
+  return null;
+}
+
+function validateYmd(y: number, m: number, d: number): string | null {
+  if (m < 1 || m > 12) return null;
+  if (d < 1 || d > 31) return null;
+  // Use UTC to avoid timezone drift; validate that the round-trip matches.
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  if (
+    dt.getUTCFullYear() !== y ||
+    dt.getUTCMonth() !== m - 1 ||
+    dt.getUTCDate() !== d
+  ) {
+    return null;
+  }
+  return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
+function formatDateLocal(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function formatDateLocalUTC(d: Date): string {
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+}
+
 function findHeaderRow(rows: any[][]): number {
   for (let i = 0; i < Math.min(10, rows.length); i++) {
     const row = rows[i];

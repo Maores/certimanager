@@ -4,6 +4,7 @@ import {
   normalizeStatus,
   normalizeCertTypeName,
   parseExcel,
+  parseExcelDate,
 } from "@/lib/excel-parser";
 import * as XLSX from "xlsx";
 
@@ -677,5 +678,58 @@ describe("parseExcel", () => {
     expect(first.lastName).toBe("קליבו");
     // Sheet-name match ("מאושרי נת״ע") supplies the default cert type
     expect(first.certTypeName).toBe("נת״ע");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// parseExcelDate
+// ---------------------------------------------------------------------------
+
+describe("parseExcelDate", () => {
+  it("returns null for empty, undefined, dash, whitespace", () => {
+    expect(parseExcelDate(undefined)).toBeNull();
+    expect(parseExcelDate(null)).toBeNull();
+    expect(parseExcelDate("")).toBeNull();
+    expect(parseExcelDate("-")).toBeNull();
+    expect(parseExcelDate("   ")).toBeNull();
+  });
+
+  it("parses an Excel date serial number (days since 1900)", () => {
+    // 45658 is 2025-01-01 in Excel's calendar (roughly — with the classic off-by-one)
+    // 45292 is 2024-01-01
+    expect(parseExcelDate(45292)).toBe("2024-01-01");
+    expect(parseExcelDate(45658)).toBe("2025-01-01");
+  });
+
+  it("parses an ISO-style string date", () => {
+    expect(parseExcelDate("2025-06-01")).toBe("2025-06-01");
+    expect(parseExcelDate("2024-12-31")).toBe("2024-12-31");
+  });
+
+  it("parses a DD/MM/YYYY string (Hebrew locale format)", () => {
+    expect(parseExcelDate("01/06/2025")).toBe("2025-06-01");
+    expect(parseExcelDate("31/12/2024")).toBe("2024-12-31");
+  });
+
+  it("parses a DD.MM.YYYY string", () => {
+    expect(parseExcelDate("01.06.2025")).toBe("2025-06-01");
+  });
+
+  it("parses a DD-MM-YYYY string", () => {
+    expect(parseExcelDate("01-06-2025")).toBe("2025-06-01");
+  });
+
+  it("returns null for garbage strings", () => {
+    expect(parseExcelDate("not a date")).toBeNull();
+    expect(parseExcelDate("abc/def/ghi")).toBeNull();
+  });
+
+  it("returns null for impossible dates", () => {
+    expect(parseExcelDate("32/01/2025")).toBeNull(); // day 32
+    expect(parseExcelDate("01/13/2025")).toBeNull(); // month 13
+  });
+
+  it("accepts a Date object (xlsx sometimes parses serials eagerly)", () => {
+    expect(parseExcelDate(new Date(2025, 5, 1))).toBe("2025-06-01"); // June is month index 5
   });
 });
