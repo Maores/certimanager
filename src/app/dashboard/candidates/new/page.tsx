@@ -1,13 +1,9 @@
-import { createClient } from "@/lib/supabase/server";
-import { getAuthenticatedUser } from "@/lib/supabase/auth";
-import { redirect } from "next/navigation";
+import { requireUser } from "@/lib/supabase/auth";
 import { CandidateForm } from "@/components/candidates/candidate-form";
 import { createCandidate } from "@/app/dashboard/candidates/actions";
 
 export default async function NewCandidatePage() {
-  const user = await getAuthenticatedUser();
-  if (!user) redirect("/login");
-  const supabase = await createClient();
+  const { user, supabase } = await requireUser();
 
   const { data: certTypes } = await supabase
     .from("cert_types")

@@ -1,6 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
-import { getAuthenticatedUser } from "@/lib/supabase/auth";
-import { redirect } from "next/navigation";
+import { requireUser } from "@/lib/supabase/auth";
 import { getGuestSessionId } from "@/lib/guest-session";
 import { guestGetCertTypes, guestGetCertifications, getGuestData } from "@/lib/guest-store";
 import { getCertStatus, formatDateHe } from "@/types/database";
@@ -59,9 +57,7 @@ export default async function CertificationsPage({
     departments = [...new Set(data.employees.map((e) => e.department).filter(Boolean))].sort() as string[];
     certifications = guestGetCertifications(guestSid);
   } else {
-    const user = await getAuthenticatedUser();
-    if (!user) redirect("/login");
-    const supabase = await createClient();
+    const { user, supabase } = await requireUser();
 
     const [certTypesResult, deptResult] = await Promise.all([
       supabase.from("cert_types").select("id, name").eq("manager_id", user.id).order("name"),

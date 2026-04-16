@@ -1,6 +1,5 @@
-import { notFound, redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { getAuthenticatedUser } from "@/lib/supabase/auth";
+import { notFound } from "next/navigation";
+import { requireUser } from "@/lib/supabase/auth";
 import { getGuestSessionId } from "@/lib/guest-session";
 import { guestGetEmployees, guestGetCertTypes, getGuestData } from "@/lib/guest-store";
 import CertificationForm from "@/components/certifications/certification-form";
@@ -24,15 +23,13 @@ export default async function EditCertificationPage({
     employees = guestGetEmployees(guestSid);
     certTypesData = guestGetCertTypes(guestSid);
   } else {
-    const user = await getAuthenticatedUser();
-    if (!user) redirect("/login");
-    const supabase = await createClient();
+    const { user, supabase } = await requireUser();
 
     const { data: certData } = await supabase
       .from("certifications")
       .select("*, employees!inner(manager_id)")
       .eq("id", id)
-      .eq("employees.manager_id", user!.id)
+      .eq("employees.manager_id", user.id)
       .single();
 
     certification = certData;
@@ -40,13 +37,13 @@ export default async function EditCertificationPage({
     const { data: empData } = await supabase
       .from("employees")
       .select("*")
-      .eq("manager_id", user!.id)
+      .eq("manager_id", user.id)
       .order("first_name");
 
     const { data: ctData } = await supabase
       .from("cert_types")
       .select("*")
-      .eq("manager_id", user!.id)
+      .eq("manager_id", user.id)
       .order("name");
 
     employees = empData || [];

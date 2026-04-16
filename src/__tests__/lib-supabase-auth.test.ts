@@ -9,11 +9,24 @@ vi.mock("@/lib/supabase/server", () => ({
   })),
 }));
 
+// Mock next/navigation so we can observe redirects. Real `redirect()` throws
+// a NEXT_REDIRECT error and is typed `never` — we preserve the throw so the
+// function's control flow matches production (caller never runs past it).
+const redirectSpy = vi.fn((url: string) => {
+  const err = new Error("NEXT_REDIRECT") as Error & { digest?: string };
+  err.digest = `NEXT_REDIRECT;replace;${url};307;`;
+  throw err;
+});
+vi.mock("next/navigation", () => ({
+  redirect: redirectSpy,
+}));
+
 beforeEach(() => {
   getUserSpy.mockReset();
   getUserSpy.mockResolvedValue({
     data: { user: { id: "user-1", email: "a@b.co" } },
   });
+  redirectSpy.mockClear();
   vi.resetModules();
 });
 
@@ -40,4 +53,23 @@ describe("getAuthenticatedUser", () => {
   // component tests. Dedup is a React+Next.js library contract we rely on
   // at production runtime; verified instead via before/after measurements
   // (Task 8).
+});
+
+describe("requireUser", () => {
+  it("returns { user, supabase } when authenticated, without redirecting", async () => {
+    const { requireUser } = await import("@/lib/supabase/auth");
+    const { user, supabase } = await requireUser();
+    expect(user).toEqual({ id: "user-1", email: "a@b.co" });
+    expect(supabase).toBeDefined();
+    expect(supabase.auth).toBeDefined();
+    expect(redirectSpy).not.toHaveBeenCalled();
+  });
+
+  it("redirects to /login when Supabase returns no user", async () => {
+    getUserSpy.mockResolvedValue({ data: { user: null } });
+    const { requireUser } = await import("@/lib/supabase/auth");
+    await expect(requireUser()).rejects.toThrow("NEXT_REDIRECT");
+    expect(redirectSpy).toHaveBeenCalledWith("/login");
+    expect(redirectSpy).toHaveBeenCalledTimes(1);
+  });
 });

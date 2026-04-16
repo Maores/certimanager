@@ -1,6 +1,4 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { getAuthenticatedUser } from "@/lib/supabase/auth";
+import { requireUser } from "@/lib/supabase/auth";
 import { createCertType, deleteCertType } from "./actions";
 import { DeleteButton } from "@/components/ui/delete-button";
 import { CertTypeCreateForm } from "@/components/cert-types/cert-type-create-form";
@@ -17,14 +15,12 @@ export default async function CertTypesPage() {
   if (guestSid) {
     certTypes = guestGetCertTypes(guestSid);
   } else {
-    const user = await getAuthenticatedUser();
-    if (!user) redirect("/login");
-    const supabase = await createClient();
+    const { user, supabase } = await requireUser();
 
     const result = await supabase
       .from("cert_types")
       .select("*")
-      .eq("manager_id", user!.id)
+      .eq("manager_id", user.id)
       .order("name", { ascending: true });
     certTypes = result.data;
     error = result.error;

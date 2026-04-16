@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { getAuthenticatedUser } from "@/lib/supabase/auth";
+import { notFound } from "next/navigation";
+import { requireUser } from "@/lib/supabase/auth";
 import { getCertStatus, formatDateHe } from "@/types/database";
 import type { Employee, Certification } from "@/types/database";
 import { DeleteEmployeeButton } from "./delete-button";
@@ -27,15 +26,13 @@ export default async function EmployeeDetailPage({
     if (!employee) { notFound(); }
     certifications = guestGetCertsByEmployee(guestSid, id);
   } else {
-    const user = await getAuthenticatedUser();
-    if (!user) redirect("/login");
-    const supabase = await createClient();
+    const { user, supabase } = await requireUser();
 
     const { data: empData } = await supabase
       .from("employees")
       .select("*")
       .eq("id", id)
-      .eq("manager_id", user!.id)
+      .eq("manager_id", user.id)
       .single();
 
     employee = empData as Employee | null;

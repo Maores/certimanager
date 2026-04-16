@@ -1,10 +1,8 @@
-import { createClient } from "@/lib/supabase/server";
-import { getAuthenticatedUser } from "@/lib/supabase/auth";
+import { requireUser } from "@/lib/supabase/auth";
 import { getGuestSessionId } from "@/lib/guest-session";
 import { guestGetEmployeeCount, getGuestData } from "@/lib/guest-store";
 import { getCertStatus, formatDateHe } from "@/types/database";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Users, CheckCircle, AlertTriangle, XCircle, UserCheck, UserX } from "lucide-react";
 import type { ElementType } from "react";
 
@@ -61,10 +59,7 @@ export default async function DashboardPage() {
       };
     }).sort((a: any, b: any) => (a.expiry_date || "").localeCompare(b.expiry_date || ""));
   } else {
-    const user = await getAuthenticatedUser();
-    if (!user) redirect("/login");
-
-    const supabase = await createClient();
+    const { user, supabase } = await requireUser();
 
     // Run both queries in parallel — they don't depend on each other.
     const [employeesRes, certsRes] = await Promise.all([
