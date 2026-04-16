@@ -73,11 +73,11 @@ certimanager/
 │   │   └── adversarial.md              # Deliberately weird inputs
 │   ├── journeys/                       # One MD file per journey
 │   │   ├── 01-mobile-nav-8-tabs.md             (P0)
-│   │   ├── 02-mobile-responsive-layouts.md     (P0)
+│   │   ├── 02-mobile-layouts-core-screens.md   (P0, 375px through dashboard/employees/certs)
 │   │   ├── 03-import-happy-pikoh.md            (P0)
 │   │   ├── 04-import-dirty-data.md             (P0)
 │   │   ├── 05-cert-crud-partial-dates.md       (P0)
-│   │   ├── 06-candidate-promotion.md           (P1)
+│   │   ├── 06-candidate-promotion.md           (P1, single + bulk via sarah-mobile and yossi-power)
 │   │   └── 07-hebrew-search-filter.md          (P2)
 │   ├── fixtures/
 │   │   ├── seed.sql                    # Truncate + insert known state
