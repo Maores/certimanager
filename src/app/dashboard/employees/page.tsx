@@ -1,7 +1,5 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
-import { getAuthenticatedUser } from "@/lib/supabase/auth";
-import { redirect } from "next/navigation";
+import { requireUser } from "@/lib/supabase/auth";
 import type { Employee } from "@/types/database";
 import { Search, UserPlus, Users } from "lucide-react";
 import { EmployeeListClient } from "@/components/employees/employee-list-client";
@@ -33,10 +31,7 @@ export default async function EmployeesPage({
     totalPages = Math.ceil(allGuest.length / PAGE_SIZE);
     employees = allGuest.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   } else {
-    const user = await getAuthenticatedUser();
-    if (!user) redirect("/login");
-
-    const supabase = await createClient();
+    const { user, supabase } = await requireUser();
 
     // Build filtered employee query
     const safeQ = q

@@ -1,6 +1,5 @@
-import { notFound, redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { getAuthenticatedUser } from "@/lib/supabase/auth";
+import { notFound } from "next/navigation";
+import { requireUser } from "@/lib/supabase/auth";
 import { EmployeeForm } from "@/components/employees/employee-form";
 import { updateEmployee } from "../../actions";
 import Link from "next/link";
@@ -19,15 +18,13 @@ export default async function EditEmployeePage({
   if (guestSid) {
     employee = guestGetEmployee(guestSid, id);
   } else {
-    const user = await getAuthenticatedUser();
-    if (!user) redirect("/login");
-    const supabase = await createClient();
+    const { user, supabase } = await requireUser();
 
     const { data } = await supabase
       .from("employees")
       .select("*")
       .eq("id", id)
-      .eq("manager_id", user!.id)
+      .eq("manager_id", user.id)
       .single();
     employee = data;
   }

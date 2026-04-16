@@ -1,6 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
-import { getAuthenticatedUser } from "@/lib/supabase/auth";
-import { redirect } from "next/navigation";
+import { requireUser } from "@/lib/supabase/auth";
 import { getGuestSessionId } from "@/lib/guest-session";
 import { ClipboardList } from "lucide-react";
 import { TasksClient } from "./tasks-client";
@@ -33,9 +31,7 @@ export default async function TasksPage({
     );
   }
 
-  const user = await getAuthenticatedUser();
-  if (!user) redirect("/login");
-  const supabase = await createClient();
+  const { user, supabase } = await requireUser();
 
   // Fetch tasks with employee names.
   // Secondary sort by `id` makes the order stable for rows sharing a `created_at`

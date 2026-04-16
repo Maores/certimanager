@@ -1,8 +1,7 @@
-import { createClient } from "@/lib/supabase/server";
-import { getAuthenticatedUser } from "@/lib/supabase/auth";
+import { requireUser } from "@/lib/supabase/auth";
 import { getGuestSessionId } from "@/lib/guest-session";
 import { guestGetEmployee, guestGetCertTypes, guestGetCertsByEmployee } from "@/lib/guest-store";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import CertificationForm from "@/components/certifications/certification-form";
 
 export default async function NewCertificationForEmployeePage({
@@ -29,15 +28,13 @@ export default async function NewCertificationForEmployeePage({
       expiry_date: c.expiry_date,
     }));
   } else {
-    const user = await getAuthenticatedUser();
-    if (!user) redirect("/login");
-    const supabase = await createClient();
+    const { user, supabase } = await requireUser();
 
     const { data: empData } = await supabase
       .from("employees")
       .select("*")
       .eq("id", id)
-      .eq("manager_id", user!.id)
+      .eq("manager_id", user.id)
       .single();
 
     employee = empData;
@@ -49,7 +46,7 @@ export default async function NewCertificationForEmployeePage({
     const { data: ctData } = await supabase
       .from("cert_types")
       .select("*")
-      .eq("manager_id", user!.id)
+      .eq("manager_id", user.id)
       .order("name");
 
     const { data: ecData } = await supabase
