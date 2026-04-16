@@ -2,6 +2,12 @@ import * as XLSX from "xlsx";
 
 // --- Types ---
 
+export interface CertDates {
+  issue_date: string | null;
+  expiry_date: string | null;
+  next_refresh_date: string | null;
+}
+
 export interface ParsedWorker {
   employeeNumber: string;
   rawEmployeeNumber: string;
@@ -13,6 +19,7 @@ export interface ParsedWorker {
   responsible: string;
   sourceSheet: string;
   certTypeName: string | null;
+  certDates: CertDates;
 }
 
 export interface ParsedSheet {
@@ -30,7 +37,13 @@ export interface SkippedRow {
 
 export interface ParseResult {
   sheets: ParsedSheet[];
-  uniqueWorkers: Map<string, ParsedWorker & { certTypeNames: string[] }>;
+  uniqueWorkers: Map<
+    string,
+    ParsedWorker & {
+      certTypeNames: string[];
+      certDatesByType: Record<string, CertDates>;
+    }
+  >;
   certTypeNames: string[];
   noCertWorkers: ParsedWorker[];
   totalParsed: number;
@@ -137,6 +150,76 @@ export function normalizeStatus(raw: string | undefined, defaultStatus = "פעי
   return { value: defaultStatus, warning: true };
 }
 
+/**
+ * Parse a cell value from xlsx into a "YYYY-MM-DD" string or null.
+ * Accepts Excel date serials (number), Date objects, and common string formats
+ * including ISO (YYYY-MM-DD) and Hebrew-locale DD/MM/YYYY (also .- separators).
+ * Returns null for empty, invalid, or impossible dates.
+ */
+export function parseExcelDate(raw: unknown): string | null {
+  if (raw === null || raw === undefined) return null;
+
+  // Date object: xlsx with cellDates:true produces these.
+  if (raw instanceof Date) {
+    if (isNaN(raw.getTime())) return null;
+    return formatDateLocal(raw);
+  }
+
+  // Excel date serial (number): days since 1899-12-30 (Excel's epoch).
+  if (typeof raw === "number") {
+    if (!isFinite(raw) || raw <= 0) return null;
+    // Excel serial 1 = 1900-01-01 (actually 1899-12-31 due to the 1900 leap bug).
+    // The well-known formula: days since 1899-12-30.
+    const ms = Math.round((raw - 25569) * 86400 * 1000);
+    const d = new Date(ms);
+    if (isNaN(d.getTime())) return null;
+    return formatDateLocalUTC(d);
+  }
+
+  // String: trim, reject empty/dash/whitespace, then try known formats.
+  const s = String(raw).trim();
+  if (!s || s === "-") return null;
+
+  // ISO-like: YYYY-MM-DD (optionally with time suffix)
+  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+  if (iso) {
+    const [, y, m, d] = iso;
+    return validateYmd(+y, +m, +d);
+  }
+
+  // DD/MM/YYYY or DD.MM.YYYY or DD-MM-YYYY (Hebrew-locale common formats)
+  const dmy = /^(\d{1,2})[\/\.\-](\d{1,2})[\/\.\-](\d{4})$/.exec(s);
+  if (dmy) {
+    const [, d, m, y] = dmy;
+    return validateYmd(+y, +m, +d);
+  }
+
+  return null;
+}
+
+function validateYmd(y: number, m: number, d: number): string | null {
+  if (m < 1 || m > 12) return null;
+  if (d < 1 || d > 31) return null;
+  // Use UTC to avoid timezone drift; validate that the round-trip matches.
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  if (
+    dt.getUTCFullYear() !== y ||
+    dt.getUTCMonth() !== m - 1 ||
+    dt.getUTCDate() !== d
+  ) {
+    return null;
+  }
+  return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
+function formatDateLocal(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function formatDateLocalUTC(d: Date): string {
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+}
+
 function findHeaderRow(rows: any[][]): number {
   for (let i = 0; i < Math.min(10, rows.length); i++) {
     const row = rows[i];
@@ -152,7 +235,13 @@ function findHeaderRow(rows: any[][]): number {
 export function parseExcel(buffer: ArrayBuffer): ParseResult {
   const workbook = XLSX.read(buffer, { type: "array" });
   const sheets: ParsedSheet[] = [];
-  const uniqueWorkers = new Map<string, ParsedWorker & { certTypeNames: string[] }>();
+  const uniqueWorkers = new Map<
+    string,
+    ParsedWorker & {
+      certTypeNames: string[];
+      certDatesByType: Record<string, CertDates>;
+    }
+  >();
   const certTypeNames = new Set<string>();
   const noCertWorkers: ParsedWorker[] = [];
   let totalParsed = 0;
@@ -197,6 +286,8 @@ export function parseExcel(buffer: ArrayBuffer): ParseResult {
     const certNameCol = colIdx(["הסמכה"]);
     const notesCol = colIdx(["הערות", "משימות", "הערה"]);
     const responsibleCol = colIdx(["אחראי"]);
+    const tokefTeudaCol = colIdx(["תוקף תעודה"]);
+    const moedRenoonCol = colIdx(["מועד רענון הבא"]);
 
     for (let i = 0; i < dataRows.length; i++) {
       const row = dataRows[i];
@@ -234,6 +325,25 @@ export function parseExcel(buffer: ArrayBuffer): ParseResult {
       const responsibleRaw = responsibleCol >= 0 ? String(row[responsibleCol] || "").trim() : "";
       const responsible = responsibleRaw === "-" ? "" : responsibleRaw;
 
+      // --- Date columns with two-regime disambiguation ---
+      const tokefTeudaRaw = tokefTeudaCol >= 0 ? row[tokefTeudaCol] : undefined;
+      const moedRenoonRaw = moedRenoonCol >= 0 ? row[moedRenoonCol] : undefined;
+      const moedRenoonParsed = parseExcelDate(moedRenoonRaw);
+      const tokefTeudaParsed = parseExcelDate(tokefTeudaRaw);
+
+      const certDates: CertDates =
+        moedRenoonParsed !== null
+          ? {
+              issue_date: tokefTeudaParsed,
+              expiry_date: null,
+              next_refresh_date: moedRenoonParsed,
+            }
+          : {
+              issue_date: null,
+              expiry_date: tokefTeudaParsed,
+              next_refresh_date: null,
+            };
+
       // Determine cert types: prefer per-row "הסמכה" column, fall back to sheet-level
       const rowCertRaw = certNameCol >= 0 ? String(row[certNameCol] || "").trim() : "";
       const rowCertTypes = normalizeCertTypeName(rowCertRaw);
@@ -253,6 +363,7 @@ export function parseExcel(buffer: ArrayBuffer): ParseResult {
         responsible,
         sourceSheet: sheetName,
         certTypeName: effectiveCertTypes[0] ?? null,
+        certDates,
       };
 
       parsedWorkers.push(worker);
@@ -264,14 +375,23 @@ export function parseExcel(buffer: ArrayBuffer): ParseResult {
           if (!existing.certTypeNames.includes(ct)) {
             existing.certTypeNames.push(ct);
           }
+          // Last writer wins for (empNum, certType) — subsequent same-type row
+          // on another sheet overwrites. Previously-seen types are not changed
+          // unless the new row has the same cert type.
+          existing.certDatesByType[ct] = certDates;
         }
         if (notes && !existing.notes.includes(notes)) {
           existing.notes = existing.notes ? `${existing.notes}\n${notes}` : notes;
         }
       } else {
+        const datesByType: Record<string, CertDates> = {};
+        for (const ct of effectiveCertTypes) {
+          datesByType[ct] = certDates;
+        }
         uniqueWorkers.set(empNum, {
           ...worker,
           certTypeNames: [...effectiveCertTypes],
+          certDatesByType: datesByType,
         });
         if (effectiveCertTypes.length === 0) {
           noCertWorkers.push(worker);

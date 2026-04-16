@@ -3,7 +3,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { parseExcel } from "@/lib/excel-parser";
+import { parseExcel, type CertDates } from "@/lib/excel-parser";
+import { decideCertMerge } from "@/lib/cert-merge";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -18,6 +19,7 @@ export interface SerializedWorker {
   notes: string;
   responsible: string;
   certTypeNames: string[];
+  certDatesByType: Record<string, CertDates>;
   existsInDb: boolean;
   existingCertTypes: string[];
 }
@@ -45,6 +47,7 @@ export interface ImportResponse {
     employeesUpdated: number;
     certTypesCreated: number;
     certificationsCreated: number;
+    certificationsUpdated: number;
     certificationsSkipped: number;
     tasksCreated: number;
     errors: string[];
@@ -129,6 +132,7 @@ export async function parseExcelFile(formData: FormData): Promise<ParseResponse>
           notes: w.notes,
           responsible: w.responsible,
           certTypeNames: w.certTypeNames,
+          certDatesByType: w.certDatesByType,
           existsInDb: existingEmpMap.has(empNum),
           existingCertTypes: existingCerts,
         };
@@ -161,6 +165,7 @@ export async function executeBulkImport(
   let employeesCreated = 0;
   let employeesUpdated = 0;
   let certificationsCreated = 0;
+  let certificationsUpdated = 0;
   let certificationsSkipped = 0;
   let tasksCreated = 0;
 
@@ -300,22 +305,48 @@ export async function executeBulkImport(
       }
     }
 
-    // Step 3: Create certifications (scoped dedup)
-    const existingCertSet = new Set<string>();
+    // Step 3: Create or update certifications (monotonic field-level merge)
     const empIds = Array.from(employeeMap.values());
+
+    // Fetch existing certs with full date tuples, keyed by (empId, cert_type_id)
+    type ExistingCert = {
+      id: string;
+      employee_id: string;
+      cert_type_id: string;
+      issue_date: string | null;
+      expiry_date: string | null;
+      next_refresh_date: string | null;
+    };
+    const existingCertMap = new Map<string, ExistingCert>();
 
     if (empIds.length > 0) {
       const { data: existingCerts } = await supabase
         .from("certifications")
-        .select("employee_id, cert_type_id")
+        .select("id, employee_id, cert_type_id, issue_date, expiry_date, next_refresh_date")
         .in("employee_id", empIds);
 
-      for (const c of existingCerts || []) {
-        existingCertSet.add(`${c.employee_id}:${c.cert_type_id}`);
+      for (const c of (existingCerts || []) as ExistingCert[]) {
+        existingCertMap.set(`${c.employee_id}:${c.cert_type_id}`, c);
       }
     }
 
-    const certRows: { employee_id: string; cert_type_id: string; issue_date: null; expiry_date: null; notes: null }[] = [];
+    const insertRows: {
+      employee_id: string;
+      cert_type_id: string;
+      issue_date: string | null;
+      expiry_date: string | null;
+      next_refresh_date: string | null;
+      notes: null;
+    }[] = [];
+
+    const updateOps: {
+      id: string;
+      patch: {
+        issue_date: string | null;
+        expiry_date: string | null;
+        next_refresh_date: string | null;
+      };
+    }[] = [];
 
     for (const worker of workers) {
       const empId = employeeMap.get(worker.employeeNumber);
@@ -325,34 +356,74 @@ export async function executeBulkImport(
         const ctId = certTypeMap.get(ctName);
         if (!ctId) continue;
 
-        const key = `${empId}:${ctId}`;
-        if (existingCertSet.has(key)) {
-          certificationsSkipped++;
-          continue;
-        }
-
-        certRows.push({
-          employee_id: empId,
-          cert_type_id: ctId,
+        const fileDates: CertDates = worker.certDatesByType[ctName] ?? {
           issue_date: null,
           expiry_date: null,
-          notes: null,
-        });
-        existingCertSet.add(key);
+          next_refresh_date: null,
+        };
+
+        const key = `${empId}:${ctId}`;
+        const existing = existingCertMap.get(key) ?? null;
+        const dbDates: CertDates | null = existing
+          ? {
+              issue_date: existing.issue_date,
+              expiry_date: existing.expiry_date,
+              next_refresh_date: existing.next_refresh_date,
+            }
+          : null;
+
+        const decision = decideCertMerge(fileDates, dbDates);
+
+        if (decision.action === "insert") {
+          insertRows.push({
+            employee_id: empId,
+            cert_type_id: ctId,
+            issue_date: decision.merged.issue_date,
+            expiry_date: decision.merged.expiry_date,
+            next_refresh_date: decision.merged.next_refresh_date,
+            notes: null,
+          });
+        } else if (decision.action === "update" && existing) {
+          updateOps.push({
+            id: existing.id,
+            patch: {
+              issue_date: decision.merged.issue_date,
+              expiry_date: decision.merged.expiry_date,
+              next_refresh_date: decision.merged.next_refresh_date,
+            },
+          });
+        } else {
+          certificationsSkipped++;
+        }
       }
     }
 
-    for (let i = 0; i < certRows.length; i += 50) {
-      const batch = certRows.slice(i, i + 50);
+    // Batch INSERTs
+    for (let i = 0; i < insertRows.length; i += 50) {
+      const batch = insertRows.slice(i, i + 50);
       const { data: inserted, error } = await supabase
         .from("certifications")
         .insert(batch)
         .select("id");
 
       if (error) {
-        errors.push(`שגיאה בייבוא הסמכות (אצווה ${Math.floor(i / 50) + 1}): ${error.message}`);
+        errors.push(`שגיאה ביצירת הסמכות (אצווה ${Math.floor(i / 50) + 1}): ${error.message}`);
       } else {
         certificationsCreated += inserted?.length || 0;
+      }
+    }
+
+    // UPDATEs — one-by-one because patches differ per row
+    for (const op of updateOps) {
+      const { error } = await supabase
+        .from("certifications")
+        .update(op.patch)
+        .eq("id", op.id);
+
+      if (error) {
+        errors.push(`שגיאה בעדכון הסמכה: ${error.message}`);
+      } else {
+        certificationsUpdated++;
       }
     }
 
@@ -367,6 +438,7 @@ export async function executeBulkImport(
         employeesUpdated,
         certTypesCreated,
         certificationsCreated,
+        certificationsUpdated,
         certificationsSkipped,
         tasksCreated,
         errors,

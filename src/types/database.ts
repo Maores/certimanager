@@ -35,6 +35,7 @@ export interface Certification {
   cert_type_name?: string;
   issue_date: string | null;
   expiry_date: string | null;
+  next_refresh_date: string | null;
   image_url: string | null;
   notes: string | null;
   created_at: string;
@@ -85,22 +86,29 @@ export interface EmployeeWithCertsAndTasks extends Employee {
 
 export type CertStatus = "valid" | "expiring_soon" | "expired" | "unknown";
 
-export function getCertStatus(expiryDate: string | null): CertStatus {
-  if (!expiryDate) return "unknown";
+export function getCertStatus(
+  expiryDate: string | null,
+  nextRefreshDate?: string | null,
+): CertStatus {
+  // Effective deadline is the earlier of the two populated dates.
+  const dates = [expiryDate, nextRefreshDate].filter(
+    (d): d is string => !!d,
+  );
+  if (dates.length === 0) return "unknown";
+  // Dates are "YYYY-MM-DD" and lexicographically comparable.
+  const effective = dates.reduce((a, b) => (a < b ? a : b));
 
   // Normalize to date-only comparison (YYYY-MM-DD) to avoid timezone issues
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
-  // Compare as strings (YYYY-MM-DD format is lexicographically sortable)
-  if (expiryDate < todayStr) return "expired";
+  if (effective < todayStr) return "expired";
 
-  // Calculate 30 days from now
   const thirtyDays = new Date(today);
   thirtyDays.setDate(thirtyDays.getDate() + 30);
   const thirtyStr = `${thirtyDays.getFullYear()}-${String(thirtyDays.getMonth() + 1).padStart(2, '0')}-${String(thirtyDays.getDate()).padStart(2, '0')}`;
 
-  if (expiryDate <= thirtyStr) return "expiring_soon";
+  if (effective <= thirtyStr) return "expiring_soon";
   return "valid";
 }
 

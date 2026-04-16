@@ -4,6 +4,7 @@ import {
   normalizeStatus,
   normalizeCertTypeName,
   parseExcel,
+  parseExcelDate,
 } from "@/lib/excel-parser";
 import * as XLSX from "xlsx";
 
@@ -642,6 +643,123 @@ describe("parseExcel", () => {
     expect(result.totalParsed).toBe(0);
   });
 
+  // -------------------------------------------------------------------------
+  // Date column capture with two-regime disambiguation
+  // -------------------------------------------------------------------------
+  describe("date columns", () => {
+    it("regime 1: both columns populated → issue + next_refresh, expiry null", () => {
+      const buf = buildXlsx([
+        {
+          name: "מאושרי נת״ע",
+          rows: [
+            ["מספר זהות", "שם משפחה", "שם פרטי", "תוקף תעודה", "מועד רענון הבא"],
+            ["123456789", "כהן", "דוד", "01/06/2025", "01/06/2026"],
+          ],
+        },
+      ]);
+      const result = parseExcel(buf);
+      const worker = result.sheets[0].workers[0];
+      expect(worker.certDates).toEqual({
+        issue_date: "2025-06-01",
+        expiry_date: null,
+        next_refresh_date: "2026-06-01",
+      });
+    });
+
+    it("regime 2: only תוקף תעודה populated → expiry only", () => {
+      const buf = buildXlsx([
+        {
+          name: "מאושרי נת״ע",
+          rows: [
+            ["מספר זהות", "שם משפחה", "שם פרטי", "תוקף תעודה", "מועד רענון הבא"],
+            ["123456789", "כהן", "דוד", "01/12/2026", ""],
+          ],
+        },
+      ]);
+      const result = parseExcel(buf);
+      const worker = result.sheets[0].workers[0];
+      expect(worker.certDates).toEqual({
+        issue_date: null,
+        expiry_date: "2026-12-01",
+        next_refresh_date: null,
+      });
+    });
+
+    it("both columns empty → all three dates null", () => {
+      const buf = buildXlsx([
+        {
+          name: "מאושרי נת״ע",
+          rows: [
+            ["מספר זהות", "שם משפחה", "שם פרטי", "תוקף תעודה", "מועד רענון הבא"],
+            ["123456789", "כהן", "דוד", "", ""],
+          ],
+        },
+      ]);
+      const result = parseExcel(buf);
+      const worker = result.sheets[0].workers[0];
+      expect(worker.certDates).toEqual({
+        issue_date: null,
+        expiry_date: null,
+        next_refresh_date: null,
+      });
+    });
+
+    it("garbage refresh value falls back to regime 2", () => {
+      const buf = buildXlsx([
+        {
+          name: "מאושרי נת״ע",
+          rows: [
+            ["מספר זהות", "שם משפחה", "שם פרטי", "תוקף תעודה", "מועד רענון הבא"],
+            ["123456789", "כהן", "דוד", "01/12/2026", "not a date"],
+          ],
+        },
+      ]);
+      const result = parseExcel(buf);
+      const worker = result.sheets[0].workers[0];
+      // Invalid refresh → treat as regime 2 (expiry-only)
+      expect(worker.certDates).toEqual({
+        issue_date: null,
+        expiry_date: "2026-12-01",
+        next_refresh_date: null,
+      });
+    });
+  });
+
+  it("merges per-cert-type dates across sheets for the same worker", () => {
+    const buf = buildXlsx([
+      {
+        name: "מאושרי נת״ע",
+        rows: [
+          ["מספר זהות", "שם משפחה", "שם פרטי", "תוקף תעודה", "מועד רענון הבא"],
+          // regime 1 on נת״ע
+          ["123456789", "כהן", "דוד", "01/06/2025", "01/06/2026"],
+        ],
+      },
+      {
+        name: "מאושרי כביש 6",
+        rows: [
+          ["מספר זהות", "שם משפחה", "שם פרטי", "תוקף תעודה", "מועד רענון הבא"],
+          // regime 2 on כביש 6
+          ["123456789", "כהן", "דוד", "01/12/2027", ""],
+        ],
+      },
+    ]);
+
+    const result = parseExcel(buf);
+    const merged = result.uniqueWorkers.get("123456789")!;
+    expect(merged.certTypeNames.sort()).toEqual(["כביש 6", "נת״ע"]);
+    expect(merged.certDatesByType["נת״ע"]).toEqual({
+      issue_date: "2025-06-01",
+      expiry_date: null,
+      next_refresh_date: "2026-06-01",
+    });
+    expect(merged.certDatesByType["כביש 6"]).toEqual({
+      issue_date: null,
+      expiry_date: "2027-12-01",
+      next_refresh_date: null,
+    });
+  });
+
   // Regression: real נת״ע file exported April 2026 uses header "תעודת זהות"
   // (cert-of-identity) instead of "מספר זהות" (id number). Sheet name has
   // a suffix "לשיבוץ". Layout has title/summary/blank rows before the header.
@@ -677,5 +795,58 @@ describe("parseExcel", () => {
     expect(first.lastName).toBe("קליבו");
     // Sheet-name match ("מאושרי נת״ע") supplies the default cert type
     expect(first.certTypeName).toBe("נת״ע");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// parseExcelDate
+// ---------------------------------------------------------------------------
+
+describe("parseExcelDate", () => {
+  it("returns null for empty, undefined, dash, whitespace", () => {
+    expect(parseExcelDate(undefined)).toBeNull();
+    expect(parseExcelDate(null)).toBeNull();
+    expect(parseExcelDate("")).toBeNull();
+    expect(parseExcelDate("-")).toBeNull();
+    expect(parseExcelDate("   ")).toBeNull();
+  });
+
+  it("parses an Excel date serial number (days since 1900)", () => {
+    // 45658 is 2025-01-01 in Excel's calendar (roughly — with the classic off-by-one)
+    // 45292 is 2024-01-01
+    expect(parseExcelDate(45292)).toBe("2024-01-01");
+    expect(parseExcelDate(45658)).toBe("2025-01-01");
+  });
+
+  it("parses an ISO-style string date", () => {
+    expect(parseExcelDate("2025-06-01")).toBe("2025-06-01");
+    expect(parseExcelDate("2024-12-31")).toBe("2024-12-31");
+  });
+
+  it("parses a DD/MM/YYYY string (Hebrew locale format)", () => {
+    expect(parseExcelDate("01/06/2025")).toBe("2025-06-01");
+    expect(parseExcelDate("31/12/2024")).toBe("2024-12-31");
+  });
+
+  it("parses a DD.MM.YYYY string", () => {
+    expect(parseExcelDate("01.06.2025")).toBe("2025-06-01");
+  });
+
+  it("parses a DD-MM-YYYY string", () => {
+    expect(parseExcelDate("01-06-2025")).toBe("2025-06-01");
+  });
+
+  it("returns null for garbage strings", () => {
+    expect(parseExcelDate("not a date")).toBeNull();
+    expect(parseExcelDate("abc/def/ghi")).toBeNull();
+  });
+
+  it("returns null for impossible dates", () => {
+    expect(parseExcelDate("32/01/2025")).toBeNull(); // day 32
+    expect(parseExcelDate("01/13/2025")).toBeNull(); // month 13
+  });
+
+  it("accepts a Date object (xlsx sometimes parses serials eagerly)", () => {
+    expect(parseExcelDate(new Date(2025, 5, 1))).toBe("2025-06-01"); // June is month index 5
   });
 });

@@ -33,6 +33,7 @@ export async function createCertification(formData: FormData) {
     const cert_type_id = formData.get("cert_type_id") as string;
     const issue_date = formData.get("issue_date") as string;
     const expiry_date = formData.get("expiry_date") as string;
+    const next_refresh_date = formData.get("next_refresh_date") as string;
     const image_url = formData.get("image_url") as string | null;
     const notes = formData.get("notes") as string | null;
 
@@ -47,8 +48,8 @@ export async function createCertification(formData: FormData) {
       (c) =>
         c.employee_id === employee_id &&
         c.cert_type_id === cert_type_id &&
-        c.expiry_date &&
-        c.expiry_date > today
+        ((c.expiry_date && c.expiry_date > today) ||
+         (c.next_refresh_date && c.next_refresh_date > today))
     );
     if (existingCert) {
       throw new Error("לעובד זה כבר יש הסמכה בתוקף מסוג זה");
@@ -59,6 +60,7 @@ export async function createCertification(formData: FormData) {
       cert_type_id,
       issue_date: issue_date || null,
       expiry_date: expiry_date || null,
+      next_refresh_date: next_refresh_date || null,
       image_url: image_url || null,
       notes: notes || null,
     });
@@ -76,6 +78,7 @@ export async function createCertification(formData: FormData) {
   const cert_type_id = formData.get("cert_type_id") as string;
   const issue_date = formData.get("issue_date") as string;
   const expiry_date = formData.get("expiry_date") as string;
+  const next_refresh_date = formData.get("next_refresh_date") as string;
   const image_url = formData.get("image_url") as string | null;
   const notes = formData.get("notes") as string | null;
 
@@ -109,7 +112,7 @@ export async function createCertification(formData: FormData) {
     .select("id")
     .eq("employee_id", employee_id)
     .eq("cert_type_id", cert_type_id)
-    .gt("expiry_date", today)
+    .or(`expiry_date.gt.${today},next_refresh_date.gt.${today}`)
     .limit(1);
 
   if (existingCerts && existingCerts.length > 0) {
@@ -121,6 +124,7 @@ export async function createCertification(formData: FormData) {
     cert_type_id,
     issue_date: issue_date || null,
     expiry_date: expiry_date || null,
+    next_refresh_date: next_refresh_date || null,
     image_url: image_url || null,
     notes: notes || null,
   });
@@ -140,6 +144,7 @@ export async function updateCertification(id: string, formData: FormData) {
     const cert_type_id = formData.get("cert_type_id") as string;
     const issue_date = formData.get("issue_date") as string;
     const expiry_date = formData.get("expiry_date") as string;
+    const next_refresh_date = formData.get("next_refresh_date") as string;
     const image_url = formData.get("image_url") as string | null;
     const notes = formData.get("notes") as string | null;
 
@@ -152,6 +157,7 @@ export async function updateCertification(id: string, formData: FormData) {
       cert_type_id,
       issue_date: issue_date || null,
       expiry_date: expiry_date || null,
+      next_refresh_date: next_refresh_date || null,
       image_url: image_url || null,
       notes: notes || null,
     });
@@ -183,6 +189,7 @@ export async function updateCertification(id: string, formData: FormData) {
   const cert_type_id = formData.get("cert_type_id") as string;
   const issue_date = formData.get("issue_date") as string;
   const expiry_date = formData.get("expiry_date") as string;
+  const next_refresh_date = formData.get("next_refresh_date") as string;
   const image_url = formData.get("image_url") as string | null;
   const notes = formData.get("notes") as string | null;
 
@@ -215,6 +222,7 @@ export async function updateCertification(id: string, formData: FormData) {
       cert_type_id,
       issue_date: issue_date || null,
       expiry_date: expiry_date || null,
+      next_refresh_date: next_refresh_date || null,
       image_url: image_url || null,
       notes: notes || null,
     })

@@ -40,7 +40,7 @@ export default async function EmployeeDetailPage({
 
     const { data: certData } = await supabase
       .from("certifications")
-      .select("*, cert_types(name)")
+      .select("id, issue_date, expiry_date, next_refresh_date, image_url, cert_type_id, cert_types(name)")
       .eq("employee_id", id)
       .order("expiry_date", { ascending: true });
 
@@ -194,7 +194,7 @@ export default async function EmployeeDetailPage({
         ) : (
           <div className="space-y-3">
             {certsWithUrls.map((cert) => {
-              const status = getCertStatus(cert.expiry_date);
+              const status = getCertStatus(cert.expiry_date, cert.next_refresh_date);
               const config = statusConfig[status];
               const isPdf = cert.image_url?.endsWith(".pdf");
 
@@ -215,8 +215,11 @@ export default async function EmployeeDetailPage({
                         {cert.cert_types?.name ?? cert.cert_type_name ?? "-"}
                       </h3>
                       <p className="text-sm text-[#94a3b8]">
-                        הונפקה: {formatDateHe(cert.issue_date)} | פג תוקף:{" "}
-                        {formatDateHe(cert.expiry_date)}
+                        {[
+                          cert.issue_date && `הונפקה: ${formatDateHe(cert.issue_date)}`,
+                          cert.expiry_date && `פג תוקף: ${formatDateHe(cert.expiry_date)}`,
+                          cert.next_refresh_date && `מועד רענון הבא: ${formatDateHe(cert.next_refresh_date)}`,
+                        ].filter(Boolean).join(" | ")}
                       </p>
                     </div>
                   </div>

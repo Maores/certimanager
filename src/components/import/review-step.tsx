@@ -102,17 +102,33 @@ export function ReviewStep({ data, onConfirm, onBack, importing }: ReviewStepPro
                   <div className="flex flex-wrap gap-1">
                     {worker.certTypeNames.map((ct) => {
                       const isExisting = worker.existingCertTypes.includes(ct);
+                      const dates = worker.certDatesByType[ct];
+                      const dateLine = dates
+                        ? [
+                            dates.issue_date && `הונפקה ${dates.issue_date}`,
+                            dates.expiry_date && `פג תוקף ${dates.expiry_date}`,
+                            dates.next_refresh_date && `רענון ${dates.next_refresh_date}`,
+                          ]
+                            .filter(Boolean)
+                            .join(", ")
+                        : "";
                       return (
-                        <span
-                          key={ct}
-                          className={
-                            isExisting
-                              ? "rounded bg-gray-200 px-2 py-0.5 text-xs text-gray-500 line-through"
-                              : "rounded bg-green-100 px-2 py-0.5 text-xs text-green-800"
-                          }
-                        >
-                          {ct}
-                        </span>
+                        <div key={ct} className="flex flex-col">
+                          <span
+                            className={
+                              isExisting
+                                ? "rounded bg-gray-200 px-2 py-0.5 text-xs text-gray-500 line-through"
+                                : "rounded bg-green-100 px-2 py-0.5 text-xs text-green-800"
+                            }
+                          >
+                            {ct}
+                          </span>
+                          {dateLine && (
+                            <span className="mt-0.5 text-[10px] text-gray-500">
+                              {dateLine}
+                            </span>
+                          )}
+                        </div>
                       );
                     })}
                     {worker.certTypeNames.length === 0 && (
