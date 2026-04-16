@@ -2,6 +2,12 @@ import * as XLSX from "xlsx";
 
 // --- Types ---
 
+export interface CertDates {
+  issue_date: string | null;
+  expiry_date: string | null;
+  next_refresh_date: string | null;
+}
+
 export interface ParsedWorker {
   employeeNumber: string;
   rawEmployeeNumber: string;
@@ -13,6 +19,7 @@ export interface ParsedWorker {
   responsible: string;
   sourceSheet: string;
   certTypeName: string | null;
+  certDates: CertDates;
 }
 
 export interface ParsedSheet {
@@ -267,6 +274,8 @@ export function parseExcel(buffer: ArrayBuffer): ParseResult {
     const certNameCol = colIdx(["הסמכה"]);
     const notesCol = colIdx(["הערות", "משימות", "הערה"]);
     const responsibleCol = colIdx(["אחראי"]);
+    const tokefTeudaCol = colIdx(["תוקף תעודה"]);
+    const moedRenoonCol = colIdx(["מועד רענון הבא"]);
 
     for (let i = 0; i < dataRows.length; i++) {
       const row = dataRows[i];
@@ -304,6 +313,25 @@ export function parseExcel(buffer: ArrayBuffer): ParseResult {
       const responsibleRaw = responsibleCol >= 0 ? String(row[responsibleCol] || "").trim() : "";
       const responsible = responsibleRaw === "-" ? "" : responsibleRaw;
 
+      // --- Date columns with two-regime disambiguation ---
+      const tokefTeudaRaw = tokefTeudaCol >= 0 ? row[tokefTeudaCol] : undefined;
+      const moedRenoonRaw = moedRenoonCol >= 0 ? row[moedRenoonCol] : undefined;
+      const moedRenoonParsed = parseExcelDate(moedRenoonRaw);
+      const tokefTeudaParsed = parseExcelDate(tokefTeudaRaw);
+
+      const certDates: CertDates =
+        moedRenoonParsed !== null
+          ? {
+              issue_date: tokefTeudaParsed,
+              expiry_date: null,
+              next_refresh_date: moedRenoonParsed,
+            }
+          : {
+              issue_date: null,
+              expiry_date: tokefTeudaParsed,
+              next_refresh_date: null,
+            };
+
       // Determine cert types: prefer per-row "הסמכה" column, fall back to sheet-level
       const rowCertRaw = certNameCol >= 0 ? String(row[certNameCol] || "").trim() : "";
       const rowCertTypes = normalizeCertTypeName(rowCertRaw);
@@ -323,6 +351,7 @@ export function parseExcel(buffer: ArrayBuffer): ParseResult {
         responsible,
         sourceSheet: sheetName,
         certTypeName: effectiveCertTypes[0] ?? null,
+        certDates,
       };
 
       parsedWorkers.push(worker);

@@ -643,6 +643,88 @@ describe("parseExcel", () => {
     expect(result.totalParsed).toBe(0);
   });
 
+  // -------------------------------------------------------------------------
+  // Date column capture with two-regime disambiguation
+  // -------------------------------------------------------------------------
+  describe("date columns", () => {
+    it("regime 1: both columns populated → issue + next_refresh, expiry null", () => {
+      const buf = buildXlsx([
+        {
+          name: "מאושרי נת״ע",
+          rows: [
+            ["מספר זהות", "שם משפחה", "שם פרטי", "תוקף תעודה", "מועד רענון הבא"],
+            ["123456789", "כהן", "דוד", "01/06/2025", "01/06/2026"],
+          ],
+        },
+      ]);
+      const result = parseExcel(buf);
+      const worker = result.sheets[0].workers[0];
+      expect(worker.certDates).toEqual({
+        issue_date: "2025-06-01",
+        expiry_date: null,
+        next_refresh_date: "2026-06-01",
+      });
+    });
+
+    it("regime 2: only תוקף תעודה populated → expiry only", () => {
+      const buf = buildXlsx([
+        {
+          name: "מאושרי נת״ע",
+          rows: [
+            ["מספר זהות", "שם משפחה", "שם פרטי", "תוקף תעודה", "מועד רענון הבא"],
+            ["123456789", "כהן", "דוד", "01/12/2026", ""],
+          ],
+        },
+      ]);
+      const result = parseExcel(buf);
+      const worker = result.sheets[0].workers[0];
+      expect(worker.certDates).toEqual({
+        issue_date: null,
+        expiry_date: "2026-12-01",
+        next_refresh_date: null,
+      });
+    });
+
+    it("both columns empty → all three dates null", () => {
+      const buf = buildXlsx([
+        {
+          name: "מאושרי נת״ע",
+          rows: [
+            ["מספר זהות", "שם משפחה", "שם פרטי", "תוקף תעודה", "מועד רענון הבא"],
+            ["123456789", "כהן", "דוד", "", ""],
+          ],
+        },
+      ]);
+      const result = parseExcel(buf);
+      const worker = result.sheets[0].workers[0];
+      expect(worker.certDates).toEqual({
+        issue_date: null,
+        expiry_date: null,
+        next_refresh_date: null,
+      });
+    });
+
+    it("garbage refresh value falls back to regime 2", () => {
+      const buf = buildXlsx([
+        {
+          name: "מאושרי נת״ע",
+          rows: [
+            ["מספר זהות", "שם משפחה", "שם פרטי", "תוקף תעודה", "מועד רענון הבא"],
+            ["123456789", "כהן", "דוד", "01/12/2026", "not a date"],
+          ],
+        },
+      ]);
+      const result = parseExcel(buf);
+      const worker = result.sheets[0].workers[0];
+      // Invalid refresh → treat as regime 2 (expiry-only)
+      expect(worker.certDates).toEqual({
+        issue_date: null,
+        expiry_date: "2026-12-01",
+        next_refresh_date: null,
+      });
+    });
+  });
+
   // Regression: real נת״ע file exported April 2026 uses header "תעודת זהות"
   // (cert-of-identity) instead of "מספר זהות" (id number). Sheet name has
   // a suffix "לשיבוץ". Layout has title/summary/blank rows before the header.
