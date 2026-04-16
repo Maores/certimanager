@@ -37,7 +37,13 @@ export interface SkippedRow {
 
 export interface ParseResult {
   sheets: ParsedSheet[];
-  uniqueWorkers: Map<string, ParsedWorker & { certTypeNames: string[] }>;
+  uniqueWorkers: Map<
+    string,
+    ParsedWorker & {
+      certTypeNames: string[];
+      certDatesByType: Record<string, CertDates>;
+    }
+  >;
   certTypeNames: string[];
   noCertWorkers: ParsedWorker[];
   totalParsed: number;
@@ -229,7 +235,13 @@ function findHeaderRow(rows: any[][]): number {
 export function parseExcel(buffer: ArrayBuffer): ParseResult {
   const workbook = XLSX.read(buffer, { type: "array" });
   const sheets: ParsedSheet[] = [];
-  const uniqueWorkers = new Map<string, ParsedWorker & { certTypeNames: string[] }>();
+  const uniqueWorkers = new Map<
+    string,
+    ParsedWorker & {
+      certTypeNames: string[];
+      certDatesByType: Record<string, CertDates>;
+    }
+  >();
   const certTypeNames = new Set<string>();
   const noCertWorkers: ParsedWorker[] = [];
   let totalParsed = 0;
@@ -363,14 +375,23 @@ export function parseExcel(buffer: ArrayBuffer): ParseResult {
           if (!existing.certTypeNames.includes(ct)) {
             existing.certTypeNames.push(ct);
           }
+          // Last writer wins for (empNum, certType) — subsequent same-type row
+          // on another sheet overwrites. Previously-seen types are not changed
+          // unless the new row has the same cert type.
+          existing.certDatesByType[ct] = certDates;
         }
         if (notes && !existing.notes.includes(notes)) {
           existing.notes = existing.notes ? `${existing.notes}\n${notes}` : notes;
         }
       } else {
+        const datesByType: Record<string, CertDates> = {};
+        for (const ct of effectiveCertTypes) {
+          datesByType[ct] = certDates;
+        }
         uniqueWorkers.set(empNum, {
           ...worker,
           certTypeNames: [...effectiveCertTypes],
+          certDatesByType: datesByType,
         });
         if (effectiveCertTypes.length === 0) {
           noCertWorkers.push(worker);

@@ -725,6 +725,41 @@ describe("parseExcel", () => {
     });
   });
 
+  it("merges per-cert-type dates across sheets for the same worker", () => {
+    const buf = buildXlsx([
+      {
+        name: "מאושרי נת״ע",
+        rows: [
+          ["מספר זהות", "שם משפחה", "שם פרטי", "תוקף תעודה", "מועד רענון הבא"],
+          // regime 1 on נת״ע
+          ["123456789", "כהן", "דוד", "01/06/2025", "01/06/2026"],
+        ],
+      },
+      {
+        name: "מאושרי כביש 6",
+        rows: [
+          ["מספר זהות", "שם משפחה", "שם פרטי", "תוקף תעודה", "מועד רענון הבא"],
+          // regime 2 on כביש 6
+          ["123456789", "כהן", "דוד", "01/12/2027", ""],
+        ],
+      },
+    ]);
+
+    const result = parseExcel(buf);
+    const merged = result.uniqueWorkers.get("123456789")!;
+    expect(merged.certTypeNames.sort()).toEqual(["כביש 6", "נת״ע"]);
+    expect(merged.certDatesByType["נת״ע"]).toEqual({
+      issue_date: "2025-06-01",
+      expiry_date: null,
+      next_refresh_date: "2026-06-01",
+    });
+    expect(merged.certDatesByType["כביש 6"]).toEqual({
+      issue_date: null,
+      expiry_date: "2027-12-01",
+      next_refresh_date: null,
+    });
+  });
+
   // Regression: real נת״ע file exported April 2026 uses header "תעודת זהות"
   // (cert-of-identity) instead of "מספר זהות" (id number). Sheet name has
   // a suffix "לשיבוץ". Layout has title/summary/blank rows before the header.
