@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { redirect } from "next/navigation";
 import type { Employee } from "@/types/database";
 import { Search, UserPlus, Users } from "lucide-react";
@@ -32,61 +33,68 @@ export default async function EmployeesPage({
     totalPages = Math.ceil(allGuest.length / PAGE_SIZE);
     employees = allGuest.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   } else {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthenticatedUser();
     if (!user) redirect("/login");
 
-    // Fetch distinct departments for the filter
-    const { data: allEmployees } = await supabase
+    const supabase = await createClient();
+
+    // Build filtered employee query
+    const safeQ = q
+      ? q
+          .replace(/\\/g, "\\\\")
+          .replace(/%/g, "\\%")
+          .replace(/_/g, "\\_")
+          .replace(/,/g, "\\,")
+      : null;
+
+    let query = supabase
       .from("employees")
-      .select("department")
+      .select("*")
       .eq("manager_id", user.id)
-      .order("department");
-    departments = [
-      ...new Set(
-        (allEmployees || [])
-          .map((e) => e.department)
-          .filter(Boolean)
-      ),
-    ] as string[];
-
-    let query = supabase.from("employees").select("*").eq("manager_id", user.id).order("first_name");
-
-    if (q) {
-      // Escape PostgREST special characters to prevent parse errors.
-      // Order matters: backslash must be escaped first.
-      const safeQ = q.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_").replace(/,/g, "\\,");
+      .order("first_name");
+    if (safeQ) {
       query = query.or(
         `first_name.ilike.%${safeQ}%,last_name.ilike.%${safeQ}%,employee_number.ilike.%${safeQ}%,department.ilike.%${safeQ}%`
       );
     }
-
-    if (dept) {
-      query = query.eq("department", dept);
-    }
-
-    if (statusFilter) {
-      query = query.eq("status", statusFilter);
-    }
+    if (dept) query = query.eq("department", dept);
+    if (statusFilter) query = query.eq("status", statusFilter);
+    query = query.range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
 
     // Count query (same filters, head-only)
-    let countQuery = supabase.from("employees").select("*", { count: "exact", head: true }).eq("manager_id", user.id);
-    if (q) {
-      const safeQ = q.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_").replace(/,/g, "\\,");
+    let countQuery = supabase
+      .from("employees")
+      .select("*", { count: "exact", head: true })
+      .eq("manager_id", user.id);
+    if (safeQ) {
       countQuery = countQuery.or(
         `first_name.ilike.%${safeQ}%,last_name.ilike.%${safeQ}%,employee_number.ilike.%${safeQ}%,department.ilike.%${safeQ}%`
       );
     }
     if (dept) countQuery = countQuery.eq("department", dept);
     if (statusFilter) countQuery = countQuery.eq("status", statusFilter);
-    const { count } = await countQuery;
-    totalPages = Math.ceil((count || 0) / PAGE_SIZE);
 
-    // Apply pagination range
-    query = query.range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+    // Distinct departments query
+    const deptsQuery = supabase
+      .from("employees")
+      .select("department")
+      .eq("manager_id", user.id)
+      .order("department");
 
-    const { data } = await query;
-    employees = data as Employee[] | null;
+    // Run all three in parallel — they are independent reads.
+    const [deptsRes, countRes, employeesRes] = await Promise.all([
+      deptsQuery,
+      countQuery,
+      query,
+    ]);
+
+    departments = [
+      ...new Set(
+        (deptsRes.data || []).map((e) => e.department).filter(Boolean)
+      ),
+    ] as string[];
+    totalPages = Math.ceil((countRes.count || 0) / PAGE_SIZE);
+    employees = employeesRes.data as Employee[] | null;
   }
 
   return (

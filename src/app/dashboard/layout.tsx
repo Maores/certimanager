@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { logout } from "@/app/login/actions";
 import { isGuestSession } from "@/lib/guest-session";
 import Sidebar, { NavItem } from "@/components/layout/sidebar";
@@ -25,11 +25,7 @@ export default async function DashboardLayout({
   let userEmail = "אורח";
 
   if (!guest) {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
+    const user = await getAuthenticatedUser();
     if (!user) {
       redirect("/login");
     }

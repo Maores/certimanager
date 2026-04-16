@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { getGuestSessionId } from "@/lib/guest-session";
 import { guestGetEmployees, guestGetCertTypes, getGuestData } from "@/lib/guest-store";
 import CertificationForm from "@/components/certifications/certification-form";
@@ -23,9 +24,9 @@ export default async function EditCertificationPage({
     employees = guestGetEmployees(guestSid);
     certTypesData = guestGetCertTypes(guestSid);
   } else {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthenticatedUser();
     if (!user) redirect("/login");
+    const supabase = await createClient();
 
     const { data: certData } = await supabase
       .from("certifications")

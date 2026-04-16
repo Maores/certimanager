@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { redirect } from "next/navigation";
 import { getGuestSessionId } from "@/lib/guest-session";
 import { guestGetEmployees, guestGetCertTypes, getGuestData } from "@/lib/guest-store";
@@ -21,9 +22,9 @@ export default async function NewCertificationPage() {
       expiry_date: c.expiry_date,
     }));
   } else {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthenticatedUser();
     if (!user) redirect("/login");
+    const supabase = await createClient();
 
     const { data: empData } = await supabase
       .from("employees")

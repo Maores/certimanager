@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { getGuestSessionId } from "@/lib/guest-session";
 import { guestGetEmployeeCount, getGuestData } from "@/lib/guest-store";
 import { getCertStatus, formatDateHe } from "@/types/database";
@@ -60,24 +61,31 @@ export default async function DashboardPage() {
       };
     }).sort((a: any, b: any) => (a.expiry_date || "").localeCompare(b.expiry_date || ""));
   } else {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthenticatedUser();
     if (!user) redirect("/login");
 
-    const { data: allEmployees } = await supabase
-      .from("employees")
-      .select("id, status")
-      .eq("manager_id", user.id);
-    const empList = allEmployees || [];
+    const supabase = await createClient();
+
+    // Run both queries in parallel — they don't depend on each other.
+    const [employeesRes, certsRes] = await Promise.all([
+      supabase
+        .from("employees")
+        .select("id, status")
+        .eq("manager_id", user.id),
+      supabase
+        .from("certifications")
+        .select(
+          "id, expiry_date, employee_id, cert_type_id, employees!inner(first_name, last_name, manager_id), cert_types(name)"
+        )
+        .eq("employees.manager_id", user.id)
+        .order("expiry_date", { ascending: true }),
+    ]);
+
+    const empList = employeesRes.data || [];
     employeeCountVal = empList.length;
     activeEmployeeCount = empList.filter((e) => e.status === "פעיל").length;
     inactiveEmployeeCount = employeeCountVal - activeEmployeeCount;
-    const { data: allCerts } = await supabase
-      .from("certifications")
-      .select("id, expiry_date, employee_id, cert_type_id, employees!inner(first_name, last_name, manager_id), cert_types(name)")
-      .eq("employees.manager_id", user.id)
-      .order("expiry_date", { ascending: true });
-    certs = allCerts || [];
+    certs = certsRes.data || [];
   }
   let validCount = 0;
   let expiringSoonCount = 0;

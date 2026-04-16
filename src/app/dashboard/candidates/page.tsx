@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { redirect } from "next/navigation";
 import type { CourseCandidate } from "@/types/database";
 import { CANDIDATE_STATUSES } from "@/types/database";
@@ -17,9 +18,9 @@ export default async function CandidatesPage({
   const { q, cert_type, status: statusFilter, page: pageParam } = await searchParams;
   const page = Math.max(1, parseInt(pageParam || "1", 10) || 1);
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthenticatedUser();
   if (!user) redirect("/login");
+  const supabase = await createClient();
 
   // Fetch cert types for filter
   const { data: certTypes } = await supabase

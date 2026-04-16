@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedUser } from "@/lib/supabase/auth";
 import { redirect } from "next/navigation";
 import { getGuestSessionId } from "@/lib/guest-session";
 import { getGuestData } from "@/lib/guest-store";
@@ -36,9 +37,9 @@ export default async function ReportsPage() {
       };
     }).sort((a: any, b: any) => (a.expiry_date || "").localeCompare(b.expiry_date || ""));
   } else {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthenticatedUser();
     if (!user) redirect("/login");
+    const supabase = await createClient();
 
     const [
       { data: employees },
