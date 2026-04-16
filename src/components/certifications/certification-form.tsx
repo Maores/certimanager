@@ -63,6 +63,9 @@ export default function CertificationForm({
   const [expiryDate, setExpiryDate] = useState(
     certification?.expiry_date || ""
   );
+  const [nextRefreshDate, setNextRefreshDate] = useState(
+    certification?.next_refresh_date || ""
+  );
   const [imageUrl, setImageUrl] = useState(
     certification?.image_url || ""
   );
@@ -201,6 +204,7 @@ export default function CertificationForm({
 
       formData.set("image_url", imageUrl);
       formData.set("expiry_date", expiryDate);
+      formData.set("next_refresh_date", nextRefreshDate);
 
       if (isEdit && certification) {
         await updateCertification(certification.id, formData);
@@ -283,7 +287,7 @@ export default function CertificationForm({
       )}
 
       {/* Dates */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
           <label
             htmlFor="issue_date"
@@ -295,7 +299,6 @@ export default function CertificationForm({
             type="date"
             id="issue_date"
             name="issue_date"
-            required
             value={issueDate}
             onChange={(e) => handleIssueDateChange(e.target.value)}
             className={inputClasses}
@@ -312,9 +315,24 @@ export default function CertificationForm({
             type="date"
             id="expiry_date"
             name="expiry_date"
-            required
             value={expiryDate}
             onChange={(e) => setExpiryDate(e.target.value)}
+            className={inputClasses}
+          />
+        </div>
+        <div>
+          <label
+            htmlFor="next_refresh_date"
+            className="block text-sm font-medium text-foreground mb-1.5"
+          >
+            מועד רענון הבא
+          </label>
+          <input
+            type="date"
+            id="next_refresh_date"
+            name="next_refresh_date"
+            value={nextRefreshDate}
+            onChange={(e) => setNextRefreshDate(e.target.value)}
             className={inputClasses}
           />
         </div>
