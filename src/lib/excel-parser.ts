@@ -190,7 +190,7 @@ export function parseExcel(buffer: ArrayBuffer): ParseResult {
       return -1;
     };
 
-    const empNumCol = colIdx(["מספר זהות", "דרכון", "ת.ז"]);
+    const empNumCol = colIdx(["מספר זהות", "דרכון", "ת.ז", "תעודת זהות"]);
     const lastNameCol = colIdx(["שם משפחה"]);
     const firstNameCol = colIdx(["שם פרטי"]);
     const statusCol = colIdx(["סטטוס", "סטאטוס"]);
