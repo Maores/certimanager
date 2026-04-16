@@ -228,6 +228,39 @@ describe("Sidebar — aria-controls only points to existing sheet", () => {
   });
 });
 
+describe("Sidebar — initial focus when sheet opens", () => {
+  beforeEach(() => {
+    mockPathname = "/dashboard";
+  });
+
+  it("does not place focus on any overflow link when the sheet opens (avoids misleading :focus-visible ring on inactive items)", () => {
+    render(<Sidebar items={FULL_ITEMS} />);
+    fireEvent.click(screen.getByRole("button", { name: "עוד אפשרויות ניווט" }));
+
+    const sheet = screen.getByRole("dialog", { name: "ניווט משני" });
+    const links = within(sheet).getAllByRole("link");
+    expect(links.length).toBeGreaterThan(0);
+
+    // Bug: previously the first overflow link (rendered rightmost in RTL =
+    // "סוגי הסמכות") received programmatic focus, so browsers painted a
+    // :focus-visible ring identical to the active-route style — confusing
+    // users on routes like /dashboard where nothing in the sheet is active.
+    links.forEach((link) => {
+      expect(document.activeElement).not.toBe(link);
+    });
+  });
+
+  it("keeps focus inside the sheet when it opens (for aria-modal / screen readers)", () => {
+    render(<Sidebar items={FULL_ITEMS} />);
+    fireEvent.click(screen.getByRole("button", { name: "עוד אפשרויות ניווט" }));
+
+    const sheet = screen.getByRole("dialog", { name: "ניווט משני" });
+    // Focus must be inside the modal — either the dialog itself or one of
+    // its descendants — but not left on the 'עוד' trigger or <body>.
+    expect(sheet.contains(document.activeElement)).toBe(true);
+  });
+});
+
 describe("Sidebar — focus trap inside the sheet dialog", () => {
   beforeEach(() => {
     mockPathname = "/dashboard";

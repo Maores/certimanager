@@ -69,7 +69,7 @@ export default function Sidebar({ items, isGuest }: SidebarProps) {
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const moreBtnRef = useRef<HTMLButtonElement>(null);
-  const firstSheetLinkRef = useRef<HTMLAnchorElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   // Close sheet on route change
   useEffect(() => {
@@ -83,7 +83,11 @@ export default function Sidebar({ items, isGuest }: SidebarProps) {
       if (e.key === "Escape") setSheetOpen(false);
     };
     window.addEventListener("keydown", onKey);
-    firstSheetLinkRef.current?.focus();
+    // Focus the dialog container (tabIndex=-1) rather than the first link
+    // so we satisfy aria-modal without painting a :focus-visible ring on a
+    // non-active overflow item. Tab from the dialog moves naturally to the
+    // first focusable link.
+    dialogRef.current?.focus();
     return () => window.removeEventListener("keydown", onKey);
   }, [sheetOpen]);
 
@@ -224,38 +228,42 @@ export default function Sidebar({ items, isGuest }: SidebarProps) {
             className="fixed inset-0 bottom-16 bg-black/40 z-40 md:hidden animate-fade-in"
           />
           <div
+            ref={dialogRef}
             id="mobile-more-sheet"
             role="dialog"
             aria-modal="true"
             aria-label="ניווט משני"
+            tabIndex={-1}
             onKeyDown={(e) => {
               if (e.key !== "Tab") return;
               const focusables = e.currentTarget.querySelectorAll<HTMLElement>("a[href]");
               if (focusables.length === 0) return;
               const first = focusables[0];
               const last = focusables[focusables.length - 1];
-              if (e.shiftKey && document.activeElement === first) {
+              const active = document.activeElement;
+              // Shift+Tab from first link — or from the dialog itself when it
+              // holds initial focus — cycles to the last link.
+              if (e.shiftKey && (active === first || active === e.currentTarget)) {
                 e.preventDefault();
                 last.focus();
-              } else if (!e.shiftKey && document.activeElement === last) {
+              } else if (!e.shiftKey && active === last) {
                 e.preventDefault();
                 first.focus();
               }
             }}
-            className="fixed bottom-16 inset-x-0 z-[60] md:hidden bg-white border-t border-border rounded-t-2xl shadow-lg pb-[env(safe-area-inset-bottom)] animate-fade-in"
+            className="fixed bottom-16 inset-x-0 z-[60] md:hidden bg-white border-t border-border rounded-t-2xl shadow-lg pb-[env(safe-area-inset-bottom)] animate-fade-in focus:outline-none"
           >
             <div className="flex justify-center pt-2 pb-1">
               <div className="w-8 h-1 rounded-full bg-gray-300" />
             </div>
             <div className="grid grid-cols-4 gap-1 p-3" dir="rtl">
-              {overflowItems.map((item, idx) => {
+              {overflowItems.map((item) => {
                 const isActive = isActiveHref(pathname, item.href);
                 const Icon = getIcon(item.href);
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    ref={idx === 0 ? firstSheetLinkRef : undefined}
                     aria-current={isActive ? "page" : undefined}
                     onClick={() => setSheetOpen(false)}
                     className={`
