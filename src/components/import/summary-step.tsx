@@ -16,6 +16,7 @@ export function SummaryStep({ summary, onReset }: SummaryStepProps) {
     { label: "עובדים עודכנו", value: summary.employeesUpdated, color: "text-blue-700" },
     { label: "סוגי הסמכה נוצרו", value: summary.certTypesCreated, color: "text-blue-700" },
     { label: "הסמכות נוצרו", value: summary.certificationsCreated, color: "text-green-700" },
+    { label: "הסמכות עודכנו", value: summary.certificationsUpdated, color: "text-blue-700" },
     { label: "הסמכות דולגו", value: summary.certificationsSkipped, color: "text-gray-600" },
     { label: "משימות נוצרו", value: summary.tasksCreated, color: "text-green-700" },
   ];
