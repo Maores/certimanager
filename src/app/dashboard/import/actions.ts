@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { parseExcel } from "@/lib/excel-parser";
+import { parseExcel, type CertDates } from "@/lib/excel-parser";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -18,6 +18,7 @@ export interface SerializedWorker {
   notes: string;
   responsible: string;
   certTypeNames: string[];
+  certDatesByType: Record<string, CertDates>;
   existsInDb: boolean;
   existingCertTypes: string[];
 }
@@ -129,6 +130,7 @@ export async function parseExcelFile(formData: FormData): Promise<ParseResponse>
           notes: w.notes,
           responsible: w.responsible,
           certTypeNames: w.certTypeNames,
+          certDatesByType: w.certDatesByType,
           existsInDb: existingEmpMap.has(empNum),
           existingCertTypes: existingCerts,
         };
