@@ -641,4 +641,41 @@ describe("parseExcel", () => {
     expect(result.sheets).toHaveLength(0);
     expect(result.totalParsed).toBe(0);
   });
+
+  // Regression: real נת״ע file exported April 2026 uses header "תעודת זהות"
+  // (cert-of-identity) instead of "מספר זהות" (id number). Sheet name has
+  // a suffix "לשיבוץ". Layout has title/summary/blank rows before the header.
+  // Before this fix: all 71 rows were skipped with "מספר זהות לא תקין".
+  it("parses the real-world נת״ע export whose ID column is named 'תעודת זהות'", () => {
+    const buf = buildXlsx([
+      {
+        name: "מאושרי נת״ע לשיבוץ",
+        rows: [
+          [], // empty row (file has whitespace before title)
+          ["רשימת מאושרי נת״ע לשיבוץ — פיקוח והכוונה"],
+          [],
+          ["עודכן: 09/04/2026  |  סה״כ: 71 עובדים  |  תעודות זהות מאומתות: 61/71"],
+          [],
+          [],
+          ["מס׳", "שם פרטי", "שם משפחה", "תעודת זהות", "תוקף תעודה", "מועד רענון הבא", "סטטוס"],
+          ["1", "בהאא", "קליבו", "031530157", "24/07/2024", "26/06/2026", "מאומת"],
+          ["2", "עפו", "קבלאן", "040389827", "24/07/2024", "26/06/2026", "מאומת"],
+        ],
+      },
+    ]);
+
+    const result = parseExcel(buf);
+
+    expect(result.totalSkipped).toBe(0);
+    expect(result.totalParsed).toBe(2);
+    expect(result.sheets).toHaveLength(1);
+    expect(result.sheets[0].name).toBe("מאושרי נת״ע לשיבוץ");
+
+    const first = result.sheets[0].workers[0];
+    expect(first.employeeNumber).toBe("031530157");
+    expect(first.firstName).toBe("בהאא");
+    expect(first.lastName).toBe("קליבו");
+    // Sheet-name match ("מאושרי נת״ע") supplies the default cert type
+    expect(first.certTypeName).toBe("נת״ע");
+  });
 });
