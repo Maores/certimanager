@@ -59,6 +59,7 @@ export async function createCertification(formData: FormData) {
       cert_type_id,
       issue_date: issue_date || null,
       expiry_date: expiry_date || null,
+      next_refresh_date: null,
       image_url: image_url || null,
       notes: notes || null,
     });
@@ -121,6 +122,7 @@ export async function createCertification(formData: FormData) {
     cert_type_id,
     issue_date: issue_date || null,
     expiry_date: expiry_date || null,
+    next_refresh_date: null,
     image_url: image_url || null,
     notes: notes || null,
   });
@@ -152,6 +154,7 @@ export async function updateCertification(id: string, formData: FormData) {
       cert_type_id,
       issue_date: issue_date || null,
       expiry_date: expiry_date || null,
+      next_refresh_date: null,
       image_url: image_url || null,
       notes: notes || null,
     });
@@ -215,6 +218,7 @@ export async function updateCertification(id: string, formData: FormData) {
       cert_type_id,
       issue_date: issue_date || null,
       expiry_date: expiry_date || null,
+      next_refresh_date: null,
       image_url: image_url || null,
       notes: notes || null,
     })

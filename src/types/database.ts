@@ -35,6 +35,7 @@ export interface Certification {
   cert_type_name?: string;
   issue_date: string | null;
   expiry_date: string | null;
+  next_refresh_date: string | null;
   image_url: string | null;
   notes: string | null;
   created_at: string;

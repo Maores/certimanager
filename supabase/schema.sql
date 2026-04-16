@@ -43,6 +43,7 @@ CREATE TABLE certifications (
   cert_type_id UUID NOT NULL REFERENCES cert_types(id) ON DELETE RESTRICT,
   issue_date DATE,
   expiry_date DATE,
+  next_refresh_date DATE,
   image_url TEXT,
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
