@@ -1,3 +1,7 @@
+import { createClient } from "@supabase/supabase-js";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 /**
  * Guard rail for the reset-db harness script.
  *
@@ -29,4 +33,68 @@ export function assertStagingEnv(): void {
         `Check your .env.test file.`,
     );
   }
+}
+
+/**
+ * Resets the staging Supabase to the known seed state defined by
+ * tests/agents/fixtures/seed.sql.
+ *
+ * Preconditions:
+ * - .env.test is loaded (use cross-env-file in the npm script).
+ * - SUPABASE_ENV=staging
+ * - NEXT_PUBLIC_SUPABASE_URL points at the staging project.
+ * - SUPABASE_SERVICE_ROLE_KEY is set (RLS bypass needed for TRUNCATE).
+ * - The exec_sql RPC exists on staging (applied as part of schema setup).
+ *
+ * On any failure, throws with a descriptive message.
+ */
+export async function runReset(): Promise<void> {
+  assertStagingEnv();
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key) {
+    throw new Error(
+      "reset-db failed: SUPABASE_SERVICE_ROLE_KEY is not set. " +
+        "Check .env.test — you need the service_role secret key (not the anon key).",
+    );
+  }
+
+  const supabase = createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  const sqlPath = resolve(process.cwd(), "tests/agents/fixtures/seed.sql");
+  const sql = readFileSync(sqlPath, "utf8");
+
+  const { error } = await supabase.rpc("exec_sql", { sql });
+  if (error) {
+    throw new Error(
+      `reset-db failed during exec_sql RPC: ${error.message}. ` +
+        `Hint: verify the exec_sql function exists on staging and that ` +
+        `SUPABASE_SERVICE_ROLE_KEY has permission to call it.`,
+    );
+  }
+}
+
+// Allow `tsx tests/agents/harness/reset-db.ts` to run the reset directly
+// (this is how the npm script `test:agents:reset` invokes it).
+const isDirectInvocation = (() => {
+  if (typeof process === "undefined") return false;
+  const arg = process.argv[1];
+  if (!arg) return false;
+  // Normalize Windows backslashes for the URL comparison.
+  const asUrl = `file://${arg.replace(/\\/g, "/")}`;
+  return import.meta.url === asUrl;
+})();
+
+if (isDirectInvocation) {
+  runReset()
+    .then(() => {
+      console.log("reset-db: OK");
+    })
+    .catch((e: unknown) => {
+      console.error(e instanceof Error ? e.message : e);
+      process.exit(1);
+    });
 }
