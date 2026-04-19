@@ -33,6 +33,7 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 !.env.example
+!.env.test.example
 
 # vercel
 .vercel
@@ -61,3 +62,15 @@ skills-lock.json
 .qwen/
 .superpowers/
 .windsurf/
+
+# Staging/test env - never commit (contains staging service_role key)
+.env.test
+
+# Agent run screenshots (bulky binaries — stay local). Markdown reports ARE committed.
+tests/agents/reports/media/
+# Per-run subagent scratch files (ad-hoc Playwright scripts, etc.)
+tests/agents/reports/_*
+
+# Playwright HTML reporter output + trace artifacts
+playwright-report/
+test-results/

@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "dev:test": "dotenv -e .env.test -- next dev -p 3001",
+    "test:agents:reset": "dotenv -e .env.test -- tsx tests/agents/harness/reset-db.ts",
+    "test:agents:smoke": "dotenv -e .env.test -- playwright test"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.0",
@@ -21,16 +24,20 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv-cli": "^11.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
     "jsdom": "^29.0.2",
+    "playwright": "^1.59.1",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5",
     "vitest": "^4.1.4"
   }
