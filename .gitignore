@@ -68,3 +68,7 @@ skills-lock.json
 
 # Agent run reports (generated per run, not source)
 tests/agents/reports/
+
+# Playwright HTML reporter output + trace artifacts
+playwright-report/
+test-results/
