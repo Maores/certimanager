@@ -282,12 +282,13 @@ export function parseExcel(buffer: ArrayBuffer): ParseResult {
     const empNumCol = colIdx(["מספר זהות", "דרכון", "ת.ז", "תעודת זהות"]);
     const lastNameCol = colIdx(["שם משפחה"]);
     const firstNameCol = colIdx(["שם פרטי"]);
-    const statusCol = colIdx(["סטטוס", "סטאטוס"]);
+    const statusCol = colIdx(["סטטוס", "סטאטוס", "מצב"]);
     const certNameCol = colIdx(["הסמכה"]);
     const notesCol = colIdx(["הערות", "משימות", "הערה"]);
     const responsibleCol = colIdx(["אחראי"]);
-    const tokefTeudaCol = colIdx(["תוקף תעודה"]);
-    const moedRenoonCol = colIdx(["מועד רענון הבא"]);
+    // Canonical first so it wins when both canonical and alias are present.
+    const tokefTeudaCol = colIdx(["תוקף תעודה", "תאריך תוקף"]);
+    const moedRenoonCol = colIdx(["מועד רענון הבא", "רענון"]);
 
     for (let i = 0; i < dataRows.length; i++) {
       const row = dataRows[i];
