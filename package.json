@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "dev:test": "cross-env-file -e .env.test next dev -p 3001",
+    "test:agents:reset": "cross-env-file -e .env.test tsx tests/agents/harness/reset-db.ts",
+    "test:agents:smoke": "cross-env-file -e .env.test playwright test"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.0",
