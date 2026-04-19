@@ -33,6 +33,7 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 !.env.example
+!.env.test.example
 
 # vercel
 .vercel
@@ -61,3 +62,9 @@ skills-lock.json
 .qwen/
 .superpowers/
 .windsurf/
+
+# Staging/test env - never commit (contains staging service_role key)
+.env.test
+
+# Agent run reports (generated per run, not source)
+tests/agents/reports/
