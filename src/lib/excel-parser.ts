@@ -142,6 +142,39 @@ export function normalizeEmployeeNumber(raw: string): string {
   return raw.toString().trim().replace(/[^a-zA-Z0-9]/g, "");
 }
 
+// Names may only contain letters (any script), whitespace, apostrophe,
+// hyphen, and period. Digits and other punctuation (parens, semicolons,
+// quotes, slashes, SQL syntax) are rejected.
+const VALID_NAME_RE = /^[\p{L}\s'\-.]+$/u;
+
+export function isValidName(raw: string): boolean {
+  const s = raw.trim();
+  if (!s) return true; // empty is caller's problem, not ours
+  return VALID_NAME_RE.test(s);
+}
+
+// Far-future guard: more than 10 years from today is almost certainly a
+// typo (e.g. 01/01/2099). Used only as a row-level skip signal.
+const TEN_YEARS_MS = 10 * 365.25 * 24 * 60 * 60 * 1000;
+
+export function isFarFutureDate(ymd: string | null): boolean {
+  if (!ymd) return false;
+  const t = Date.parse(ymd + "T00:00:00Z");
+  if (isNaN(t)) return false;
+  return t - Date.now() > TEN_YEARS_MS;
+}
+
+// Detect the "non-empty but didn't parse" state for a raw date cell.
+// Empty / whitespace / dash is legitimate absence and returns false.
+function isBadDateValue(raw: unknown): boolean {
+  if (raw === null || raw === undefined) return false;
+  if (raw instanceof Date) return isNaN(raw.getTime());
+  if (typeof raw === "number") return !isFinite(raw) || raw <= 0;
+  const s = String(raw).trim();
+  if (!s || s === "-") return false;
+  return parseExcelDate(raw) === null;
+}
+
 export function normalizeStatus(raw: string | undefined, defaultStatus = "פעיל"): { value: string; warning: boolean } {
   if (!raw || !raw.trim() || raw.trim() === "-") return { value: defaultStatus, warning: false };
   const trimmed = raw.trim();
@@ -318,6 +351,20 @@ export function parseExcel(buffer: ArrayBuffer): ParseResult {
         continue;
       }
 
+      // B4: reject SQL-injection-style or otherwise garbage names before
+      // they hit the DB — DB is safe (parameterized queries) but the UI
+      // would render them verbatim.
+      if (firstName && !isValidName(firstName)) {
+        skippedRows.push({ row: rowNum, reason: `שם לא תקין: "${firstName}"` });
+        totalSkipped++;
+        continue;
+      }
+      if (lastName && !isValidName(lastName)) {
+        skippedRows.push({ row: rowNum, reason: `שם לא תקין: "${lastName}"` });
+        totalSkipped++;
+        continue;
+      }
+
       const statusRaw = statusCol >= 0 ? String(row[statusCol] || "").trim() : "";
       const { value: status, warning: statusWarning } = normalizeStatus(statusRaw, sheetConfig.defaultStatus);
 
@@ -329,8 +376,35 @@ export function parseExcel(buffer: ArrayBuffer): ParseResult {
       // --- Date columns with two-regime disambiguation ---
       const tokefTeudaRaw = tokefTeudaCol >= 0 ? row[tokefTeudaCol] : undefined;
       const moedRenoonRaw = moedRenoonCol >= 0 ? row[moedRenoonCol] : undefined;
+
+      // B1: a non-empty but non-parseable primary date silently dropped data
+      // before this guard. `מועד רענון הבא` is tolerated as a soft signal
+      // (garbage there just falls back to regime 2 per existing semantics).
+      if (isBadDateValue(tokefTeudaRaw)) {
+        skippedRows.push({
+          row: rowNum,
+          reason: `תאריך תוקף לא תקין: "${String(tokefTeudaRaw).trim()}"`,
+        });
+        totalSkipped++;
+        continue;
+      }
+
       const moedRenoonParsed = parseExcelDate(moedRenoonRaw);
       const tokefTeudaParsed = parseExcelDate(tokefTeudaRaw);
+
+      // B3: >10 years in the future is almost always a typo. Bail out
+      // before materializing the row so the manager sees it in the panel.
+      if (isFarFutureDate(moedRenoonParsed) || isFarFutureDate(tokefTeudaParsed)) {
+        const culprit = isFarFutureDate(tokefTeudaParsed)
+          ? String(tokefTeudaRaw).trim()
+          : String(moedRenoonRaw).trim();
+        skippedRows.push({
+          row: rowNum,
+          reason: `תאריך בעתיד רחוק (>10 שנים): "${culprit}"`,
+        });
+        totalSkipped++;
+        continue;
+      }
 
       const certDates: CertDates =
         moedRenoonParsed !== null
@@ -349,6 +423,23 @@ export function parseExcel(buffer: ArrayBuffer): ParseResult {
       const rowCertRaw = certNameCol >= 0 ? String(row[certNameCol] || "").trim() : "";
       const rowCertTypes = normalizeCertTypeName(rowCertRaw);
       const effectiveCertTypes = rowCertTypes.length > 0 ? rowCertTypes : sheetConfig.certTypes;
+
+      // B5: cert sheet with ALL three date fields null creates an
+      // unrecoverable `לא ידוע` cert — reminders can never fire for it.
+      // Only applies when the file HAS date columns (pre-date-tracking
+      // fixtures have no date headers at all and should still parse).
+      const hasDateColumns = tokefTeudaCol >= 0 || moedRenoonCol >= 0;
+      if (
+        hasDateColumns &&
+        effectiveCertTypes.length > 0 &&
+        certDates.issue_date === null &&
+        certDates.expiry_date === null &&
+        certDates.next_refresh_date === null
+      ) {
+        skippedRows.push({ row: rowNum, reason: "הסמכה ללא תאריכים" });
+        totalSkipped++;
+        continue;
+      }
 
       // Add any discovered cert type names to the global set
       for (const ct of effectiveCertTypes) certTypeNames.add(ct);

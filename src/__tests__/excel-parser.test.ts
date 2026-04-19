@@ -685,7 +685,10 @@ describe("parseExcel", () => {
       });
     });
 
-    it("both columns empty → all three dates null", () => {
+    it("both columns empty on a cert sheet → row is skipped as 'הסמכה ללא תאריכים'", () => {
+      // Behavior updated 2026-04-19: silently accepting all-empty-dates on a
+      // cert sheet creates unrecoverable "לא ידוע" certs that reminders can
+      // never fire for. Parser now routes these into skippedRows instead.
       const buf = buildXlsx([
         {
           name: "מאושרי נת״ע",
@@ -696,12 +699,8 @@ describe("parseExcel", () => {
         },
       ]);
       const result = parseExcel(buf);
-      const worker = result.sheets[0].workers[0];
-      expect(worker.certDates).toEqual({
-        issue_date: null,
-        expiry_date: null,
-        next_refresh_date: null,
-      });
+      expect(result.totalParsed).toBe(0);
+      expect(result.sheets[0].skippedRows[0].reason).toContain("הסמכה ללא תאריכים");
     });
 
     it("garbage refresh value falls back to regime 2", () => {
@@ -960,5 +959,206 @@ describe("parseExcel — header alias coverage", () => {
     expect(worker.status).toBe("פעיל");
     expect(worker.certDates.issue_date).toBe("2025-03-15");
     expect(worker.certDates.next_refresh_date).toBe("2027-03-15");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// parseExcel — data-quality sanity checks (Group B from 2026-04-19 triage)
+//
+// Journey 04 × adversarial (report 2026-04-19-1519) surfaced five silent-
+// acceptance bugs where the parser had two code paths ("hard skip with
+// reason" vs. "soft fill with null"). The soft path dropped information
+// without telling the user. These tests unify them — every compromised
+// row must appear in `skippedRows` with a specific reason.
+// ---------------------------------------------------------------------------
+describe("parseExcel — data-quality sanity checks", () => {
+  function buildXlsx(sheets: { name: string; rows: (string | number)[][] }[]): ArrayBuffer {
+    const wb = XLSX.utils.book_new();
+    for (const s of sheets) {
+      const ws = XLSX.utils.aoa_to_sheet(s.rows);
+      XLSX.utils.book_append_sheet(wb, ws, s.name);
+    }
+    return XLSX.write(wb, { type: "array", bookType: "xlsx" });
+  }
+
+  // B1: invalid date string in תוקף תעודה is silently dropped today.
+  // Should: skip the row with reason "תאריך תוקף לא תקין".
+  it("B1: non-parseable תוקף תעודה value skips the row with a dedicated reason", () => {
+    const buf = buildXlsx([
+      {
+        name: "מאושרי נת״ע",
+        rows: [
+          ["מספר זהות", "שם משפחה", "שם פרטי", "תוקף תעודה", "מועד רענון הבא"],
+          ["123456789", "כהן", "דוד", "not a date", ""],
+        ],
+      },
+    ]);
+
+    const result = parseExcel(buf);
+    expect(result.totalParsed).toBe(0);
+    expect(result.totalSkipped).toBe(1);
+    const skipped = result.sheets[0].skippedRows[0];
+    expect(skipped.reason).toContain("תאריך תוקף לא תקין");
+    expect(skipped.reason).toContain("not a date");
+  });
+
+  // B1 companion: even if refresh IS valid (regime 1), a bad primary cell
+  // still hides data. Must still skip with the primary-field reason.
+  it("B1: bad primary date still skips even when refresh is valid", () => {
+    const buf = buildXlsx([
+      {
+        name: "מאושרי נת״ע",
+        rows: [
+          ["מספר זהות", "שם משפחה", "שם פרטי", "תוקף תעודה", "מועד רענון הבא"],
+          ["123456789", "כהן", "דוד", "not a date", "01/06/2026"],
+        ],
+      },
+    ]);
+
+    const result = parseExcel(buf);
+    expect(result.totalParsed).toBe(0);
+    expect(result.sheets[0].skippedRows[0].reason).toContain("תאריך תוקף לא תקין");
+  });
+
+  // B3: far-future date (>10y from now) is silently accepted today.
+  // Should: skip with a dedicated reason so the manager can correct it.
+  it("B3: date more than 10 years in the future skips with a dedicated reason", () => {
+    const buf = buildXlsx([
+      {
+        name: "מאושרי נת״ע",
+        rows: [
+          ["מספר זהות", "שם משפחה", "שם פרטי", "תוקף תעודה", "מועד רענון הבא"],
+          ["123456789", "כהן", "דוד", "01/01/2099", ""],
+        ],
+      },
+    ]);
+
+    const result = parseExcel(buf);
+    expect(result.totalParsed).toBe(0);
+    expect(result.sheets[0].skippedRows[0].reason).toContain("תאריך בעתיד רחוק");
+  });
+
+  // B3 companion: near-future dates (within 10 years) MUST still parse.
+  // Regression guard — the real-world Pikoh file has dates in 2026/2027.
+  it("B3: date within 10 years continues to parse (regression guard)", () => {
+    const nearFuture = `01/01/${new Date().getFullYear() + 5}`;
+    const buf = buildXlsx([
+      {
+        name: "מאושרי נת״ע",
+        rows: [
+          ["מספר זהות", "שם משפחה", "שם פרטי", "תוקף תעודה", "מועד רענון הבא"],
+          ["123456789", "כהן", "דוד", nearFuture, ""],
+        ],
+      },
+    ]);
+
+    const result = parseExcel(buf);
+    expect(result.totalParsed).toBe(1);
+    expect(result.totalSkipped).toBe(0);
+  });
+
+  // B4: name with SQL-injection-style punctuation is rendered verbatim.
+  // DB is safe via parameterized queries, but the UI shows junk names.
+  // Should: reject names containing characters outside [letters, space, ', -, .].
+  it("B4: name with SQL-injection-style punctuation skips with a dedicated reason", () => {
+    const buf = buildXlsx([
+      {
+        name: "מאושרי נת״ע",
+        rows: [
+          ["מספר זהות", "שם משפחה", "שם פרטי"],
+          ["123456789", "Robert'); DROP TABLE employees;--", "דוד"],
+        ],
+      },
+    ]);
+
+    const result = parseExcel(buf);
+    expect(result.totalParsed).toBe(0);
+    const skipped = result.sheets[0].skippedRows[0];
+    expect(skipped.reason).toContain("שם לא תקין");
+  });
+
+  // B4 companion: realistic names must still parse. Hebrew, Arabic, English,
+  // apostrophe ("O'Brien"), hyphen ("Ben-David"), period ("St. John").
+  it("B4: realistic names (Hebrew / apostrophe / hyphen / English) continue to parse", () => {
+    const buf = buildXlsx([
+      {
+        name: "מאושרי נת״ע",
+        rows: [
+          ["מספר זהות", "שם משפחה", "שם פרטי"],
+          ["111111111", "כהן-לוי", "בהאא"],   // hyphen + Hebrew
+          ["222222222", "O'Brien", "Patrick"], // apostrophe + English
+          ["333333333", "St. John", "Mary"],   // period
+        ],
+      },
+    ]);
+
+    const result = parseExcel(buf);
+    expect(result.totalParsed).toBe(3);
+    expect(result.totalSkipped).toBe(0);
+  });
+
+  // B5: cert sheet row with ALL three dates empty is silently imported
+  // today. The resulting cert has status `לא ידוע`, and reminders can
+  // never fire for it. Should: skip with reason "הסמכה ללא תאריכים"
+  // when the sheet expects certs.
+  it("B5: all-empty-dates on a cert sheet skips with a dedicated reason", () => {
+    const buf = buildXlsx([
+      {
+        name: "מאושרי נת״ע",
+        rows: [
+          ["מספר זהות", "שם משפחה", "שם פרטי", "תוקף תעודה", "מועד רענון הבא"],
+          ["123456789", "כהן", "דוד", "", ""],
+        ],
+      },
+    ]);
+
+    const result = parseExcel(buf);
+    expect(result.totalParsed).toBe(0);
+    expect(result.sheets[0].skippedRows[0].reason).toContain("הסמכה ללא תאריכים");
+  });
+
+  // B5 companion: sheets that do NOT expect a cert type (e.g. "פעיל - ללא הסמכה מוגדרת")
+  // must still import rows with empty dates — the row legitimately has no cert.
+  it("B5: no-cert sheets still accept rows with empty dates", () => {
+    const buf = buildXlsx([
+      {
+        name: "פעיל - ללא הסמכה מוגדרת",
+        rows: [
+          ["מספר זהות", "שם משפחה", "שם פרטי", "סטטוס"],
+          ["123456789", "כהן", "דוד", "פעיל"],
+        ],
+      },
+    ]);
+
+    const result = parseExcel(buf);
+    expect(result.totalParsed).toBe(1);
+    expect(result.totalSkipped).toBe(0);
+  });
+
+  // B2: the `שורות שדולגו` panel should now surface ALL of the above
+  // drop reasons, not just bad Israeli IDs. Rolling into one composite.
+  it("B2: skippedRows panel reports each specific data-quality reason", () => {
+    const buf = buildXlsx([
+      {
+        name: "מאושרי נת״ע",
+        rows: [
+          ["מספר זהות", "שם משפחה", "שם פרטי", "תוקף תעודה", "מועד רענון הבא"],
+          ["111111111", "כהן", "דוד", "not a date", ""],         // B1
+          ["222222222", "לוי", "משה", "01/01/2099", ""],          // B3
+          ["333333333", "DROP;--", "רחל", "01/01/2026", ""],      // B4
+          ["444444444", "גרין", "יואב", "", ""],                  // B5
+          ["abc", "תקף", "שם", "01/01/2026", ""],                 // classic bad ID
+        ],
+      },
+    ]);
+
+    const result = parseExcel(buf);
+    const reasons = result.sheets[0].skippedRows.map(r => r.reason);
+    expect(reasons.length).toBe(5);
+    expect(reasons.some(r => r.includes("תאריך תוקף לא תקין"))).toBe(true);
+    expect(reasons.some(r => r.includes("תאריך בעתיד רחוק"))).toBe(true);
+    expect(reasons.some(r => r.includes("שם לא תקין"))).toBe(true);
+    expect(reasons.some(r => r.includes("הסמכה ללא תאריכים"))).toBe(true);
+    expect(reasons.some(r => r.includes("מספר זהות לא תקין"))).toBe(true);
   });
 });
