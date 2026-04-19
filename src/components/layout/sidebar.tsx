@@ -171,6 +171,11 @@ export default function Sidebar({ items, isGuest }: SidebarProps) {
                 key={item.href}
                 href={item.href}
                 aria-current={isActive ? "page" : undefined}
+                onClick={
+                  isActive
+                    ? () => window.scrollTo({ top: 0, behavior: "smooth" })
+                    : undefined
+                }
                 className={`
                   flex flex-col items-center justify-center gap-0.5 min-w-0 flex-1 py-1.5
                   transition-colors duration-150
