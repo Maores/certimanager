@@ -1,8 +1,10 @@
 -- Agent harness seed fixture.
 -- Resets staging to a known baseline. Runs under service_role (RLS bypassed).
 -- Idempotent: safe to re-run between journeys.
-
-BEGIN;
+--
+-- Executed via the public.exec_sql RPC (PL/pgSQL EXECUTE). Transaction control
+-- commands (BEGIN/COMMIT/ROLLBACK) are NOT allowed inside EXECUTE — the RPC
+-- already runs within an implicit transaction.
 
 -- Clear dependent tables first.
 TRUNCATE TABLE certifications RESTART IDENTITY CASCADE;
@@ -43,5 +45,3 @@ INSERT INTO certifications (id, employee_id, cert_type_id, issue_date, expiry_da
   ('cccc1111-1111-1111-1111-111111111111', 'bbbb1111-1111-1111-1111-111111111111', 'aaaa1111-1111-1111-1111-111111111111', '2025-03-15', NULL,         '2027-03-15'),
   ('cccc2222-2222-2222-2222-222222222222', 'bbbb2222-2222-2222-2222-222222222222', 'aaaa2222-2222-2222-2222-222222222222', '2024-07-01', '2027-07-01', NULL),
   ('cccc3333-3333-3333-3333-333333333333', 'bbbb3333-3333-3333-3333-333333333333', 'aaaa3333-3333-3333-3333-333333333333', NULL,         NULL,         NULL);
-
-COMMIT;

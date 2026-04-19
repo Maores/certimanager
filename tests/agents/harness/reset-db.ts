@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 /**
  * Guard rail for the reset-db harness script.
@@ -83,9 +84,11 @@ const isDirectInvocation = (() => {
   if (typeof process === "undefined") return false;
   const arg = process.argv[1];
   if (!arg) return false;
-  // Normalize Windows backslashes for the URL comparison.
-  const asUrl = `file://${arg.replace(/\\/g, "/")}`;
-  return import.meta.url === asUrl;
+  try {
+    return import.meta.url === pathToFileURL(arg).href;
+  } catch {
+    return false;
+  }
 })();
 
 if (isDirectInvocation) {

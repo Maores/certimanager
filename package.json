@@ -9,9 +9,9 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "dev:test": "cross-env-file -e .env.test next dev -p 3001",
-    "test:agents:reset": "cross-env-file -e .env.test tsx tests/agents/harness/reset-db.ts",
-    "test:agents:smoke": "cross-env-file -e .env.test playwright test"
+    "dev:test": "dotenv -e .env.test -- next dev -p 3001",
+    "test:agents:reset": "dotenv -e .env.test -- tsx tests/agents/harness/reset-db.ts",
+    "test:agents:smoke": "dotenv -e .env.test -- playwright test"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.0",
@@ -31,7 +31,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "cross-env-file": "^1.0.0",
+    "dotenv-cli": "^11.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
     "jsdom": "^29.0.2",
