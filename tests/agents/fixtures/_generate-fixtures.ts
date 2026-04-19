@@ -171,11 +171,69 @@ function buildEmpty(): XLSX.WorkBook {
 }
 
 // ---------------------------------------------------------------------------
+// pikoh-variant-cols.xlsx
+//
+// SAME 10 employees as pikoh-happy, but with deliberately non-canonical
+// Hebrew column headers that real managers commonly use instead of the
+// Pikoh-export canonicals.
+//
+// Purpose: measure how the parser's alias map (currently `.includes()`-based,
+// recognising "מספר זהות" / "ת.ז" / "תעודת זהות" / "דרכון" for employee
+// number, "סטטוס" / "סטאטוס" for status, canonical-only for everything else)
+// copes with real-world variance. Some of these variants SHOULD match the
+// current aliases (e.g. "ת.ז." contains "ת.ז"); others should NOT and will
+// expose gaps.
+//
+// Coverage:
+//   Col 1 "ת.ז."            → SHOULD match (contains "ת.ז" substring)
+//   Col 2 "שם משפחה"        → canonical, matches
+//   Col 3 "שם פרטי"         → canonical, matches
+//   Col 4 "מצב"             → EXPECTED FAIL (parser only checks סטטוס / סטאטוס)
+//   Col 5 "הסמכה"           → canonical, matches
+//   Col 6 "תאריך תוקף"      → EXPECTED FAIL (parser only checks תוקף תעודה)
+//   Col 7 "רענון"           → EXPECTED FAIL (parser only checks מועד רענון הבא)
+// ---------------------------------------------------------------------------
+
+function buildVariantCols(): XLSX.WorkBook {
+  const VARIANT_HEADERS = [
+    "ת.ז.",
+    "שם משפחה",
+    "שם פרטי",
+    "מצב",
+    "הסמכה",
+    "תאריך תוקף",
+    "רענון",
+  ];
+
+  // Reuse the same 10 happy rows — only the headers differ.
+  const dataRows: (string | number | null)[][] = [
+    ["700001111", "ארז",     "רחל",    "פעיל", "נת״ע",         "15/03/2025", "15/03/2027"],
+    ["700002222", "כץ",      "אדם",    "פעיל", "נת״ע",         "01/07/2024", "01/07/2026"],
+    ["700003333", "שלום",    "יעל",    "פעיל", "נת״ע",         "10/11/2023", "10/11/2025"],
+    ["700004444", "נחום",    "איתי",   "פעיל", "נת״ע",         "20/01/2026", "20/01/2028"],
+    ["700005555", "רפאלי",   "דוד",    "פעיל", "כביש 6",       "30/06/2027", ""],
+    ["700006666", "עובדיה",  "ליאת",   "פעיל", "כביש 6",       "15/09/2026", ""],
+    ["700007777", "ממן",     "רון",    "פעיל", "כביש 6",       "01/03/2028", ""],
+    ["700008888", "פוליצר",  "מיה",    "פעיל", "חוצה ישראל",   "31/12/2026", ""],
+    ["700009999", "טלמור",   "אסף",    "פעיל", "חוצה ישראל",   "28/02/2027", ""],
+    ["700010101", "בן-חמו",  "ליאור",  "פעיל", "נתיבי ישראל",  "30/09/2025", ""],
+  ];
+
+  return buildWorkbook([
+    {
+      name: "מאושרי נת״ע",
+      rows: [VARIANT_HEADERS, ...dataRows],
+    },
+  ]);
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
 writeXlsx(buildHappy(), "pikoh-happy.xlsx");
 writeXlsx(buildDirty(), "pikoh-dirty.xlsx");
 writeXlsx(buildEmpty(), "pikoh-empty.xlsx");
+writeXlsx(buildVariantCols(), "pikoh-variant-cols.xlsx");
 
-console.log("All 3 fixtures generated successfully.");
+console.log("All 4 fixtures generated successfully.");
