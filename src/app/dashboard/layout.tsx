@@ -53,7 +53,7 @@ export default async function DashboardLayout({
               <button
                 type="submit"
                 aria-label="יציאה"
-                className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-danger font-medium px-3 py-1.5 rounded-lg hover:bg-danger-light transition-colors cursor-pointer"
+                className="inline-flex min-h-[44px] items-center gap-1.5 text-sm text-muted hover:text-danger font-medium px-3 py-1.5 rounded-lg hover:bg-danger-light transition-colors cursor-pointer touch-manipulation"
               >
                 <LogOut className="h-4 w-4" strokeWidth={1.75} />
                 <span className="hidden sm:inline">יציאה</span>
