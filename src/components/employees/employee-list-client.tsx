@@ -178,7 +178,7 @@ export function EmployeeListClient({ employees, page = 1, totalPages = 1 }: Empl
               <button
                 type="button"
                 onClick={() => toggleOne(employee.id)}
-                className="absolute top-3 left-3 cursor-pointer"
+                className="absolute top-1 left-1 inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md cursor-pointer touch-manipulation"
                 role="checkbox"
                 aria-checked={isSelected}
                 aria-label={`בחר ${employee.first_name} ${employee.last_name}`}
@@ -191,7 +191,7 @@ export function EmployeeListClient({ employees, page = 1, totalPages = 1 }: Empl
               </button>
 
               <Link href={`/dashboard/employees/${employee.id}`}>
-                <div className="flex items-center justify-between pr-0 pl-8">
+                <div className="flex items-center justify-between pr-0 pl-12">
                   <h3 className="font-medium text-foreground">
                     {employee.first_name} {employee.last_name}
                   </h3>
@@ -205,7 +205,7 @@ export function EmployeeListClient({ employees, page = 1, totalPages = 1 }: Empl
                     {employee.employee_number}
                   </span>
                 </div>
-                <div className="mt-2 space-y-1 text-sm text-muted pl-8">
+                <div className="mt-2 space-y-1 text-sm text-muted pl-12">
                   {employee.department && <p>מחלקה: {employee.department}</p>}
                   {employee.status && (
                     <div className="mt-1">

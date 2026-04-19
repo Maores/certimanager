@@ -424,7 +424,7 @@ export default async function CertificationsPage({
                   <div className="flex items-center gap-3 pt-3" style={{ borderTop: "1px solid #f1f5f9" }}>
                     <Link
                       href={`/dashboard/certifications/${cert.id}/edit`}
-                      className="text-sm font-medium transition-colors"
+                      className="inline-flex min-h-[44px] items-center text-sm font-medium transition-colors touch-manipulation"
                       style={{ color: "#2563eb" }}
                     >
                       עריכה
@@ -437,7 +437,7 @@ export default async function CertificationsPage({
                     >
                       <button
                         type="submit"
-                        className="text-sm font-medium transition-colors"
+                        className="inline-flex min-h-[44px] items-center text-sm font-medium transition-colors touch-manipulation"
                         style={{ color: "#dc2626" }}
                       >
                         מחיקה
