@@ -850,3 +850,115 @@ describe("parseExcelDate", () => {
     expect(parseExcelDate(new Date(2025, 5, 1))).toBe("2025-06-01"); // June is month index 5
   });
 });
+
+// ---------------------------------------------------------------------------
+// parseExcel — header alias coverage for real-world Pikoh variants
+//
+// Real managers often upload files whose Hebrew headers differ from the
+// canonical Pikoh export (e.g. "תאריך תוקף" instead of "תוקף תעודה",
+// "רענון" instead of "מועד רענון הבא", "מצב" instead of "סטטוס"). Journey 06
+// of the agent test harness (report 2026-04-19-1554) surfaced a P0 where
+// such variants silently dropped data. These tests fix the alias map.
+// ---------------------------------------------------------------------------
+describe("parseExcel — header alias coverage", () => {
+  function buildXlsx(sheets: { name: string; rows: (string | number)[][] }[]): ArrayBuffer {
+    const wb = XLSX.utils.book_new();
+    for (const s of sheets) {
+      const ws = XLSX.utils.aoa_to_sheet(s.rows);
+      XLSX.utils.book_append_sheet(wb, ws, s.name);
+    }
+    return XLSX.write(wb, { type: "array", bookType: "xlsx" });
+  }
+
+  it("reads status from the 'מצב' header variant", () => {
+    const buf = buildXlsx([
+      {
+        name: "מאושרי נת״ע",
+        rows: [
+          ["מספר זהות", "שם משפחה", "שם פרטי", "מצב", "הסמכה"],
+          ["123456789", "כהן", "דוד", "לא פעיל", "נת״ע"],
+        ],
+      },
+    ]);
+
+    const result = parseExcel(buf);
+    expect(result.totalParsed).toBe(1);
+    expect(result.sheets[0].workers[0].status).toBe("לא פעיל");
+  });
+
+  it("reads issue date from the 'תאריך תוקף' header variant (regime 1 with refresh)", () => {
+    const buf = buildXlsx([
+      {
+        name: "מאושרי נת״ע",
+        rows: [
+          ["מספר זהות", "שם משפחה", "שם פרטי", "סטטוס", "הסמכה", "תאריך תוקף", "רענון"],
+          ["123456789", "כהן", "דוד", "פעיל", "נת״ע", "15/03/2025", "15/03/2027"],
+        ],
+      },
+    ]);
+
+    const result = parseExcel(buf);
+    expect(result.totalParsed).toBe(1);
+    const worker = result.sheets[0].workers[0];
+    expect(worker.certDates.issue_date).toBe("2025-03-15");
+    expect(worker.certDates.next_refresh_date).toBe("2027-03-15");
+    expect(worker.certDates.expiry_date).toBeNull();
+  });
+
+  it("reads expiry date from the 'תאריך תוקף' header variant (regime 2, no refresh)", () => {
+    const buf = buildXlsx([
+      {
+        name: "מאושרי נת״ע",
+        rows: [
+          ["מספר זהות", "שם משפחה", "שם פרטי", "סטטוס", "הסמכה", "תאריך תוקף"],
+          ["123456789", "כהן", "דוד", "פעיל", "כביש 6", "30/06/2027"],
+        ],
+      },
+    ]);
+
+    const result = parseExcel(buf);
+    expect(result.totalParsed).toBe(1);
+    const worker = result.sheets[0].workers[0];
+    expect(worker.certDates.expiry_date).toBe("2027-06-30");
+    expect(worker.certDates.issue_date).toBeNull();
+    expect(worker.certDates.next_refresh_date).toBeNull();
+  });
+
+  it("reads refresh date from the 'רענון' header variant", () => {
+    // Regime 1 is triggered when moedRenoon is populated, so both the
+    // variant refresh header AND the issue date must land correctly.
+    const buf = buildXlsx([
+      {
+        name: "מאושרי נת״ע",
+        rows: [
+          ["מספר זהות", "שם משפחה", "שם פרטי", "סטטוס", "הסמכה", "תוקף תעודה", "רענון"],
+          ["123456789", "לוי", "מיכל", "פעיל", "נת״ע", "01/07/2024", "01/07/2026"],
+        ],
+      },
+    ]);
+
+    const result = parseExcel(buf);
+    expect(result.totalParsed).toBe(1);
+    const worker = result.sheets[0].workers[0];
+    expect(worker.certDates.next_refresh_date).toBe("2026-07-01");
+    expect(worker.certDates.issue_date).toBe("2024-07-01");
+  });
+
+  it("canonical headers continue to work (regression guard)", () => {
+    const buf = buildXlsx([
+      {
+        name: "מאושרי נת״ע",
+        rows: [
+          ["מספר זהות", "שם משפחה", "שם פרטי", "סטטוס", "הסמכה", "תוקף תעודה", "מועד רענון הבא"],
+          ["123456789", "כהן", "דוד", "פעיל", "נת״ע", "15/03/2025", "15/03/2027"],
+        ],
+      },
+    ]);
+
+    const result = parseExcel(buf);
+    const worker = result.sheets[0].workers[0];
+    expect(worker.status).toBe("פעיל");
+    expect(worker.certDates.issue_date).toBe("2025-03-15");
+    expect(worker.certDates.next_refresh_date).toBe("2027-03-15");
+  });
+});
