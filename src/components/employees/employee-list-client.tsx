@@ -142,7 +142,12 @@ export function EmployeeListClient({ employees, page = 1, totalPages = 1 }: Empl
                     </Link>
                   </td>
                   <td className="px-6 py-4 text-sm text-muted">
-                    {employee.employee_number}
+                    <Link
+                      href={`/dashboard/employees/${employee.id}`}
+                      className="text-muted transition-colors hover:text-primary"
+                    >
+                      {employee.employee_number}
+                    </Link>
                   </td>
                   <td className="px-6 py-4 text-sm text-muted">
                     {employee.department}

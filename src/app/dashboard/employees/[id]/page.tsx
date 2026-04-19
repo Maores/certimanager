@@ -85,9 +85,9 @@ export default async function EmployeeDetailPage({
     },
     unknown: {
       label: "לא ידוע",
-      bg: "bg-gray-100",
-      text: "text-gray-500",
-      dot: "bg-gray-400",
+      bg: "bg-amber-50",
+      text: "text-amber-700",
+      dot: "bg-amber-500",
     },
   };
 
