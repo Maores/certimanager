@@ -66,8 +66,8 @@ skills-lock.json
 # Staging/test env - never commit (contains staging service_role key)
 .env.test
 
-# Agent run reports (generated per run, not source)
-tests/agents/reports/
+# Agent run screenshots (bulky binaries — stay local). Markdown reports ARE committed.
+tests/agents/reports/media/
 
 # Playwright HTML reporter output + trace artifacts
 playwright-report/
