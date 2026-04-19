@@ -5,11 +5,60 @@
 -- Executed via the public.exec_sql RPC (PL/pgSQL EXECUTE). Transaction control
 -- commands (BEGIN/COMMIT/ROLLBACK) are NOT allowed inside EXECUTE — the RPC
 -- already runs within an implicit transaction.
+--
+-- Structure of this file:
+--   1. DDL self-heal (mirrors migration_phase3.sql + migration_cert_types_v2.sql)
+--   2. TRUNCATE dependent tables
+--   3. Seed rows
 
--- Clear dependent tables first.
+-- =============================================================
+-- 1. Self-heal schema drift — re-assert upsert-critical structures.
+-- Staging was provisioned from schema.sql only; these DDL blocks
+-- mirror the later migrations so the harness can run regardless of
+-- which migrations have/haven't been applied to a given Supabase project.
+-- All statements are IF NOT EXISTS / idempotent.
+-- =============================================================
+
+-- From migration_phase3.sql
+CREATE UNIQUE INDEX IF NOT EXISTS idx_employees_manager_number
+  ON employees(manager_id, employee_number);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_cert_types_manager_name
+  ON cert_types(manager_id, name);
+
+-- From migration_cert_types_v2.sql — the course_candidates table + its
+-- promotion-dedup unique index on certifications.
+CREATE TABLE IF NOT EXISTS course_candidates (
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  manager_id    uuid NOT NULL REFERENCES managers(id) ON DELETE CASCADE,
+  first_name    text NOT NULL,
+  last_name     text NOT NULL,
+  id_number     text NOT NULL,
+  phone         text,
+  city          text,
+  cert_type_id  uuid NOT NULL REFERENCES cert_types(id) ON DELETE RESTRICT,
+  status        text NOT NULL DEFAULT 'ממתין',
+  notes         text,
+  created_at    timestamptz DEFAULT now(),
+  updated_at    timestamptz DEFAULT now(),
+  UNIQUE(manager_id, id_number, cert_type_id)
+);
+CREATE INDEX IF NOT EXISTS idx_candidates_manager ON course_candidates(manager_id);
+CREATE INDEX IF NOT EXISTS idx_candidates_manager_status ON course_candidates(manager_id, status);
+CREATE INDEX IF NOT EXISTS idx_candidates_id_number ON course_candidates(id_number);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_certifications_employee_cert_type
+  ON certifications(employee_id, cert_type_id);
+
+-- =============================================================
+-- 2. Clear dependent tables (order matters for FK cascades).
+-- =============================================================
 TRUNCATE TABLE certifications RESTART IDENTITY CASCADE;
+TRUNCATE TABLE course_candidates RESTART IDENTITY CASCADE;
 TRUNCATE TABLE employees RESTART IDENTITY CASCADE;
 TRUNCATE TABLE cert_types RESTART IDENTITY CASCADE;
+
+-- =============================================================
+-- 3. Seed rows.
+-- =============================================================
 
 -- Ensure the admin manager row exists and is keyed to the auth user.
 -- on_auth_user_created trigger is dropped on staging, so we do this manually.

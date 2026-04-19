@@ -68,6 +68,8 @@ skills-lock.json
 
 # Agent run screenshots (bulky binaries — stay local). Markdown reports ARE committed.
 tests/agents/reports/media/
+# Per-run subagent scratch files (ad-hoc Playwright scripts, etc.)
+tests/agents/reports/_*
 
 # Playwright HTML reporter output + trace artifacts
 playwright-report/
