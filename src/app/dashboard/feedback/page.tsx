@@ -1,6 +1,7 @@
 import { MessageSquareWarning, Inbox } from "lucide-react";
 import { requireUser } from "@/lib/supabase/auth";
 import { MarkReadButton } from "./mark-read-button";
+import { DeleteFeedbackButton } from "./delete-feedback-button";
 
 type Category = "bug" | "suggestion" | "question" | "other";
 
@@ -121,7 +122,10 @@ export default async function FeedbackPage() {
                         <p className="line-clamp-2">{row.description}</p>
                       </td>
                       <td className="px-4 py-4">
-                        {!row.is_read && <MarkReadButton id={row.id} />}
+                        <div className="flex items-center gap-2">
+                          {!row.is_read && <MarkReadButton id={row.id} />}
+                          <DeleteFeedbackButton id={row.id} />
+                        </div>
                       </td>
                     </tr>
                   );
@@ -157,7 +161,10 @@ export default async function FeedbackPage() {
                   </div>
                   <p className="text-sm text-foreground leading-relaxed">{row.description}</p>
                   <p className="text-xs text-muted-foreground font-mono" dir="ltr">{row.route}</p>
-                  {!row.is_read && <MarkReadButton id={row.id} />}
+                  <div className="flex items-center gap-3 pt-2">
+                    {!row.is_read && <MarkReadButton id={row.id} />}
+                    <DeleteFeedbackButton id={row.id} />
+                  </div>
                 </div>
               );
             })}
