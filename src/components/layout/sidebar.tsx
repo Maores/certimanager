@@ -12,6 +12,7 @@ import {
   BarChart3,
   ClipboardList,
   GraduationCap,
+  Inbox,
   MoreHorizontal,
   type LucideIcon,
 } from "lucide-react";
@@ -43,6 +44,7 @@ const iconMap: Record<string, LucideIcon> = {
   reports: BarChart3,
   candidates: GraduationCap,
   tasks: ClipboardList,
+  feedback: Inbox,
 };
 
 function getIcon(href: string): LucideIcon {

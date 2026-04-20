@@ -48,9 +48,32 @@ CREATE INDEX IF NOT EXISTS idx_candidates_id_number ON course_candidates(id_numb
 CREATE UNIQUE INDEX IF NOT EXISTS idx_certifications_employee_cert_type
   ON certifications(employee_id, cert_type_id);
 
+-- From migration_feedback.sql
+CREATE TABLE IF NOT EXISTS feedback (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  manager_id  uuid NOT NULL REFERENCES managers(id) ON DELETE CASCADE,
+  category    text NOT NULL CHECK (category IN ('bug','suggestion','question','other')),
+  description text NOT NULL CHECK (char_length(description) BETWEEN 1 AND 2000),
+  route       text NOT NULL,
+  viewport    text,
+  user_agent  text,
+  is_read     boolean NOT NULL DEFAULT false,
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_feedback_manager_created
+  ON feedback (manager_id, created_at DESC);
+ALTER TABLE feedback ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS feedback_select_own ON feedback;
+CREATE POLICY feedback_select_own ON feedback FOR SELECT USING (manager_id = auth.uid());
+DROP POLICY IF EXISTS feedback_insert_own ON feedback;
+CREATE POLICY feedback_insert_own ON feedback FOR INSERT WITH CHECK (manager_id = auth.uid());
+DROP POLICY IF EXISTS feedback_update_own ON feedback;
+CREATE POLICY feedback_update_own ON feedback FOR UPDATE USING (manager_id = auth.uid());
+
 -- =============================================================
 -- 2. Clear dependent tables (order matters for FK cascades).
 -- =============================================================
+TRUNCATE TABLE feedback RESTART IDENTITY CASCADE;
 TRUNCATE TABLE certifications RESTART IDENTITY CASCADE;
 TRUNCATE TABLE course_candidates RESTART IDENTITY CASCADE;
 TRUNCATE TABLE employees RESTART IDENTITY CASCADE;
