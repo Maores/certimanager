@@ -216,6 +216,31 @@ export async function promoteCandidates(ids: string[]) {
   return results;
 }
 
+export async function deleteCandidates(ids: string[]): Promise<{
+  deleted: number;
+  errors: string[];
+}> {
+  const result = { deleted: 0, errors: [] as string[] };
+  if (!Array.isArray(ids) || ids.length === 0) return result;
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  for (const id of ids) {
+    const { error } = await supabase
+      .from("course_candidates")
+      .delete()
+      .eq("id", id)
+      .eq("manager_id", user.id);
+    if (error) result.errors.push(`${id}: ${mapSupabaseError(error.message)}`);
+    else result.deleted++;
+  }
+
+  revalidatePath("/dashboard/candidates");
+  return result;
+}
+
 // --- Import actions ---
 
 export interface CandidateImportPreview {

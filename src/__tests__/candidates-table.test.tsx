@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent, within } from "@testing-library/react";
 import type { CourseCandidate } from "@/types/database";
 
 // Mock next/navigation before importing the component
@@ -12,12 +12,14 @@ const promoteCandidate = vi.fn();
 const promoteCandidates = vi.fn();
 const updateCandidateStatus = vi.fn();
 const deleteCandidate = vi.fn();
+const deleteCandidates = vi.fn();
 
 vi.mock("@/app/dashboard/candidates/actions", () => ({
   promoteCandidate: (...args: unknown[]) => promoteCandidate(...args),
   promoteCandidates: (...args: unknown[]) => promoteCandidates(...args),
   updateCandidateStatus: (...args: unknown[]) => updateCandidateStatus(...args),
   deleteCandidate: (...args: unknown[]) => deleteCandidate(...args),
+  deleteCandidates: (...args: unknown[]) => deleteCandidates(...args),
 }));
 
 // Import after mocks
@@ -142,6 +144,80 @@ describe("CandidatesTable — error handling", () => {
 
     await waitFor(() => {
       expect(screen.getByRole("alert")).toHaveTextContent(/שגיאה בשמירת הנתונים/);
+    });
+  });
+});
+
+describe("CandidatesTable — bulk delete", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    deleteCandidates.mockResolvedValue({ deleted: 2, errors: [] });
+  });
+
+  it("clicking the bulk-delete button opens the DeleteDialog with selected names", async () => {
+    render(
+      <CandidatesTable
+        candidates={[
+          makeCandidate({ id: "c1", first_name: "דנה", last_name: "כהן" }),
+          makeCandidate({ id: "c2", first_name: "יוסי", last_name: "לוי" }),
+        ]}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /בחר דנה כהן/ }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /בחר יוסי לוי/ }));
+    fireEvent.click(screen.getByRole("button", { name: /מחק נבחרים/ }));
+
+    const dialog = await screen.findByRole("dialog", { name: /מחיקת 2 מועמדים/ });
+    expect(dialog).toBeInTheDocument();
+    expect(within(dialog).getByText("דנה כהן")).toBeInTheDocument();
+    expect(within(dialog).getByText("יוסי לוי")).toBeInTheDocument();
+  });
+
+  it("cancel closes the dialog without calling deleteCandidates; selection preserved", async () => {
+    render(
+      <CandidatesTable
+        candidates={[
+          makeCandidate({ id: "c1", first_name: "דנה", last_name: "כהן" }),
+          makeCandidate({ id: "c2", first_name: "יוסי", last_name: "לוי" }),
+        ]}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /בחר דנה כהן/ }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /בחר יוסי לוי/ }));
+    fireEvent.click(screen.getByRole("button", { name: /מחק נבחרים/ }));
+
+    fireEvent.click(await screen.findByRole("button", { name: /^ביטול$/ }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("heading", { name: /מחיקת 2 מועמדים/ })).not.toBeInTheDocument();
+    });
+    expect(deleteCandidates).not.toHaveBeenCalled();
+    expect(screen.getByRole("checkbox", { name: /בחר דנה כהן/ })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /בחר יוסי לוי/ })).toBeChecked();
+  });
+
+  it("confirm calls deleteCandidates with the selected ids and shows success", async () => {
+    render(
+      <CandidatesTable
+        candidates={[
+          makeCandidate({ id: "c1", first_name: "דנה", last_name: "כהן" }),
+          makeCandidate({ id: "c2", first_name: "יוסי", last_name: "לוי" }),
+        ]}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /בחר דנה כהן/ }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /בחר יוסי לוי/ }));
+    fireEvent.click(screen.getByRole("button", { name: /מחק נבחרים/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /^מחק$/ }));
+
+    await waitFor(() => {
+      expect(deleteCandidates).toHaveBeenCalledWith(["c1", "c2"]);
+    });
+    await waitFor(() => {
+      expect(screen.getByRole("status")).toHaveTextContent(/מחקו 2 מועמדים/);
     });
   });
 });

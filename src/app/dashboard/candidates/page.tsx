@@ -30,6 +30,7 @@ export default async function CandidatesPage({
     .from("course_candidates")
     .select("*, cert_types(name)")
     .eq("manager_id", user.id)
+    .neq("status", "הוסמך")
     .order("created_at", { ascending: false });
 
   if (q) {
@@ -51,7 +52,8 @@ export default async function CandidatesPage({
   let countQuery = supabase
     .from("course_candidates")
     .select("*", { count: "exact", head: true })
-    .eq("manager_id", user.id);
+    .eq("manager_id", user.id)
+    .neq("status", "הוסמך");
   if (q) {
     const safeQ = q.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_").replace(/,/g, "\\,");
     countQuery = countQuery.or(
