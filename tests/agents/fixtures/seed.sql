@@ -69,6 +69,8 @@ DROP POLICY IF EXISTS feedback_insert_own ON feedback;
 CREATE POLICY feedback_insert_own ON feedback FOR INSERT WITH CHECK (manager_id = auth.uid());
 DROP POLICY IF EXISTS feedback_update_own ON feedback;
 CREATE POLICY feedback_update_own ON feedback FOR UPDATE USING (manager_id = auth.uid());
+DROP POLICY IF EXISTS feedback_delete_own ON feedback;
+CREATE POLICY feedback_delete_own ON feedback FOR DELETE USING (manager_id = auth.uid());
 
 -- =============================================================
 -- 2. Clear dependent tables (order matters for FK cascades).

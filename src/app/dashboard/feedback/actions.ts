@@ -45,3 +45,11 @@ export async function markFeedbackRead(id: string): Promise<ActionResult> {
   if (error) return { error: error.message };
   return { ok: true };
 }
+
+export async function deleteFeedback(id: string): Promise<ActionResult> {
+  if (!id) return { error: "id חסר" };
+  const { supabase } = await requireUser();
+  const { error } = await supabase.from("feedback").delete().eq("id", id);
+  if (error) return { error: error.message };
+  return { ok: true };
+}

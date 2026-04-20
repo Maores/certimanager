@@ -141,3 +141,87 @@ A working visual prototype of button + popover + admin page with mocked data exi
 5. Write the two test files.
 
 The visual design, popover positioning, and accessibility wiring are already done and approved.
+
+## Addendum — 2026-04-20: delete reports
+
+**Status:** Approved 2026-04-20 (supersedes v1 "no delete" decision)
+
+### Why the change
+
+v1 ruled out delete for audit-trail reasons. That reasoning applied to a multi-user system where reports might be disputed or referenced by different people. In practice this is a **solo-use triage inbox** — the only user is also the only reader. "סמן כנקרא" already covers the "triaged but keep" state; the user needs a separate "done-and-gone" action to clean up resolved or duplicate reports. Supabase/Render daily backups cover accidental loss for the window that matters.
+
+### Decisions locked
+
+| # | Decision | Chosen | Alternative rejected |
+|---|---|---|---|
+| A1 | Hard-delete vs soft-delete? | **Hard-delete** — physical row removal via SQL `DELETE`. | Soft-delete with `deleted_at` column. Extra infra for a solo inbox. YAGNI. |
+| A2 | Scope — single-row or bulk? | **Single-row** only. Trash action on each row. | Bulk-delete (checkboxes + toolbar). Deferred until the existing multi-select work for `מועמדים`/`הסמכות`/`משימות` ships a reusable primitive. |
+| A3 | Confirmation UX | Reuse the existing `<DeleteButton>` primitive with its 2-step inline "בטוח?" confirm. | Modal dialog. Overkill and inconsistent with `employees`/`certifications`/`cert-types`/`candidates` deletes. |
+| A4 | Row visibility | Visible on **all rows** (read and unread). Side-by-side with `סמן כנקרא` on unread rows. | Gate behind mark-read (forces triage flow). Adds friction without benefit — sometimes a report is garbage and should be deleted without being read. |
+| A5 | Post-delete feedback | Row disappears after `router.refresh()`. **No toast.** | "הדיווח נמחק" toast. Inconsistent with other deletes in the app, which just refresh. |
+
+### Schema change
+
+New file: `supabase/migration_feedback_delete.sql`.
+
+```sql
+CREATE POLICY feedback_delete_own ON public.feedback
+  FOR DELETE USING (manager_id = auth.uid());
+```
+
+Mirror the same line into the self-heal block of `tests/agents/fixtures/seed.sql` so the harness stays consistent.
+
+### Server action addition
+
+Append to `src/app/dashboard/feedback/actions.ts`:
+
+```ts
+export async function deleteFeedback(id: string): Promise<ActionResult> {
+  if (!id) return { error: "id חסר" };
+  const { supabase } = await requireUser();
+  const { error } = await supabase.from("feedback").delete().eq("id", id);
+  if (error) return { error: error.message };
+  return { ok: true };
+}
+```
+
+Same signature and error shape as `markFeedbackRead`. RLS enforces scope — a malicious client cannot delete another manager's rows.
+
+### UI component
+
+New file: `src/app/dashboard/feedback/delete-feedback-button.tsx`. Client component, structure mirrors `mark-read-button.tsx`: `useTransition` + `useRouter().refresh()`. Internally renders the existing `<DeleteButton>` primitive from `src/components/ui/delete-button.tsx`, passing an async `action` that calls `deleteFeedback(id)`.
+
+The existing `<DeleteButton>` already provides the 2-step "בטוח? · מחק / ביטול" inline confirm, min-44px tap targets, `touch-manipulation`, and pending-state spinner — no new UX work needed.
+
+### Page integration
+
+Edit `src/app/dashboard/feedback/page.tsx`:
+
+- **Desktop table:** in the action cell, render `<DeleteFeedbackButton id={row.id} />` on every row. Keep `<MarkReadButton>` in the same cell when `!row.is_read`.
+- **Mobile cards:** in the action row (currently shows `סמן כנקרא` on unread cards), append `<DeleteFeedbackButton>`. Visible on read cards too.
+
+### Testing
+
+- **Unit (vitest + RTL):**
+  - Extend `src/__tests__/feedback-actions.test.ts` with three new cases for `deleteFeedback`:
+    - success path: action inserts a row then deletes it; subsequent select returns 0 rows.
+    - missing id → `{ error: "id חסר" }`.
+    - RLS violation: action called with valid id but mocked DB error → returns the error message.
+  - New file `src/__tests__/delete-feedback-button.test.tsx`: initial click shows "בטוח?"; cancel restores the delete button; confirm triggers the mocked action and calls `router.refresh()`.
+
+### Out of scope for this addendum
+
+- Undo toast / soft-delete grace period.
+- Bulk delete (see A2).
+- Purging old rows automatically (cron / scheduled function).
+- Exporting deleted rows to a log before removal.
+
+### Deployment checklist
+
+To include in the PR description:
+
+1. [ ] Run `supabase/migration_feedback_delete.sql` in **staging** Supabase before merging.
+2. [ ] Run the same SQL in **production** Supabase before clicking "Deploy" in Render.
+3. [ ] Verify in production: open `/dashboard/feedback` → click `מחיקה` on a row → confirm `מחק` → row disappears.
+
+If code deploys before the production migration runs, clicking `מחק` surfaces `new row violates row-level security policy` in the inline error. Recoverable: run the migration, retry.
