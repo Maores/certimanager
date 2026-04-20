@@ -3,11 +3,16 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const insertSpy = vi.fn();
 const updateSpy = vi.fn();
+const deleteSpy = vi.fn();
 const eqSpy = vi.fn();
 const fromSpy = vi.fn((_table: string) => ({
   insert: insertSpy,
   update: (patch: unknown) => {
     updateSpy(patch);
+    return { eq: eqSpy };
+  },
+  delete: () => {
+    deleteSpy();
     return { eq: eqSpy };
   },
 }));
@@ -25,6 +30,7 @@ beforeEach(() => {
   insertSpy.mockReset();
   insertSpy.mockResolvedValue({ error: null });
   updateSpy.mockReset();
+  deleteSpy.mockReset();
   eqSpy.mockReset();
   eqSpy.mockResolvedValue({ error: null });
   fromSpy.mockClear();
@@ -117,5 +123,30 @@ describe("markFeedbackRead", () => {
     const result = await markFeedbackRead("");
     expect(result).toEqual({ error: expect.any(String) });
     expect(updateSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("deleteFeedback", () => {
+  it("deletes the row scoped by id", async () => {
+    const { deleteFeedback } = await import("@/app/dashboard/feedback/actions");
+    const result = await deleteFeedback("fb-xyz");
+    expect(result).toEqual({ ok: true });
+    expect(fromSpy).toHaveBeenCalledWith("feedback");
+    expect(deleteSpy).toHaveBeenCalled();
+    expect(eqSpy).toHaveBeenCalledWith("id", "fb-xyz");
+  });
+
+  it("returns an error when Supabase delete fails", async () => {
+    eqSpy.mockResolvedValue({ error: { message: "policy violation" } });
+    const { deleteFeedback } = await import("@/app/dashboard/feedback/actions");
+    const result = await deleteFeedback("fb-xyz");
+    expect(result).toEqual({ error: "policy violation" });
+  });
+
+  it("rejects empty id without hitting Supabase", async () => {
+    const { deleteFeedback } = await import("@/app/dashboard/feedback/actions");
+    const result = await deleteFeedback("");
+    expect(result).toEqual({ error: expect.any(String) });
+    expect(deleteSpy).not.toHaveBeenCalled();
   });
 });
