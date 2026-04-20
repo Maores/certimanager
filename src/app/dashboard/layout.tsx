@@ -66,7 +66,7 @@ export default async function DashboardLayout({
         </header>
 
         {/* Page content */}
-        <main aria-label="תוכן ראשי" className="flex-1 p-4 sm:p-6 pb-24 md:pb-6 overflow-x-hidden animate-fade-in">
+        <main aria-label="תוכן ראשי" className="flex-1 p-4 sm:p-6 pb-24 md:pb-6 overflow-x-clip animate-fade-in">
           {children}
         </main>
       </div>
