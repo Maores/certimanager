@@ -2,6 +2,7 @@ import { requireUser } from "@/lib/supabase/auth";
 import { logout } from "@/app/login/actions";
 import { isGuestSession } from "@/lib/guest-session";
 import Sidebar, { NavItem } from "@/components/layout/sidebar";
+import { ReportButton } from "@/components/feedback/report-modal";
 import { LogOut } from "lucide-react";
 
 const navItems: NavItem[] = [
@@ -13,6 +14,7 @@ const navItems: NavItem[] = [
   { label: "משימות", href: "/dashboard/tasks", icon: "tasks" },
   { label: "ייבוא", href: "/dashboard/import", icon: "import" },
   { label: "דוחות", href: "/dashboard/reports", icon: "reports" },
+  { label: "דיווחים", href: "/dashboard/feedback", icon: "feedback" },
 ];
 
 export default async function DashboardLayout({
@@ -49,6 +51,7 @@ export default async function DashboardLayout({
             <span className="text-sm text-muted hidden sm:inline">
               {userEmail}
             </span>
+            {!guest && <ReportButton />}
             <form action={logout}>
               <button
                 type="submit"
