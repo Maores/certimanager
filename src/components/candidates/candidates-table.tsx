@@ -8,10 +8,12 @@ import { CANDIDATE_STATUSES } from "@/types/database";
 import {
   updateCandidateStatus,
   deleteCandidate,
+  deleteCandidates,
   promoteCandidate,
   promoteCandidates,
 } from "@/app/dashboard/candidates/actions";
 import { PromoteDialog } from "./promote-dialog";
+import { DeleteDialog } from "./delete-dialog";
 
 interface CandidatesTableProps {
   candidates: CourseCandidate[];
@@ -36,6 +38,12 @@ export function CandidatesTable({ candidates }: CandidatesTableProps) {
     return () => clearTimeout(t);
   }, [success]);
   const [promoteDialog, setPromoteDialog] = useState<{
+    open: boolean;
+    ids: string[];
+    names: string[];
+  }>({ open: false, ids: [], names: [] });
+
+  const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean;
     ids: string[];
     names: string[];
@@ -114,6 +122,34 @@ export function CandidatesTable({ candidates }: CandidatesTableProps) {
     setPromoteDialog({ open: true, ids, names });
   }
 
+  function handleBulkDelete() {
+    const ids = Array.from(selected);
+    const names = ids.map((id) => {
+      const c = candidates.find((cc) => cc.id === id);
+      return c ? `${c.first_name} ${c.last_name}` : id;
+    });
+    setDeleteDialog({ open: true, ids, names });
+  }
+
+  async function handleConfirmDelete() {
+    setError(null);
+    setSuccess(null);
+    try {
+      const result = await deleteCandidates(deleteDialog.ids);
+      if (result.errors.length > 0) {
+        setError(`נמחקו ${result.deleted} מועמדים. שגיאות: ${result.errors.join(", ")}`);
+      } else {
+        setSuccess(`מחקו ${result.deleted} מועמדים`);
+      }
+      setDeleteDialog({ open: false, ids: [], names: [] });
+      setSelected(new Set());
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "שגיאה במחיקה");
+      setDeleteDialog({ open: false, ids: [], names: [] });
+    }
+  }
+
   async function handleConfirmPromote() {
     setError(null);
     setSuccess(null);
@@ -179,6 +215,14 @@ export function CandidatesTable({ candidates }: CandidatesTableProps) {
             <Users className="h-3.5 w-3.5" />
             קדם לעובדים
           </button>
+          <button
+            type="button"
+            onClick={handleBulkDelete}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-danger px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 transition-colors cursor-pointer"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            מחק נבחרים
+          </button>
         </div>
       )}
 
@@ -218,7 +262,9 @@ export function CandidatesTable({ candidates }: CandidatesTableProps) {
                   />
                 </td>
                 <td className="px-3 py-2.5 font-medium text-gray-900">
-                  {c.first_name} {c.last_name}
+                  <span>{c.first_name}</span>
+                  {" "}
+                  <span>{c.last_name}</span>
                 </td>
                 <td className="px-3 py-2.5 text-gray-600" dir="ltr">
                   {c.id_number}
@@ -298,6 +344,13 @@ export function CandidatesTable({ candidates }: CandidatesTableProps) {
         candidateNames={promoteDialog.names}
         onConfirm={handleConfirmPromote}
         onCancel={() => setPromoteDialog({ open: false, ids: [], names: [] })}
+      />
+
+      <DeleteDialog
+        open={deleteDialog.open}
+        candidateNames={deleteDialog.names}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeleteDialog({ open: false, ids: [], names: [] })}
       />
     </div>
   );
