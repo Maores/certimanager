@@ -163,8 +163,6 @@ export default async function CertificationsPage({
             className="w-full pr-4 pl-10 py-2.5 rounded-lg text-sm border border-border bg-white text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary-ring"
           />
           <input type="hidden" name="filter" value={currentFilter} />
-          {deptFilter && <input type="hidden" name="dept" value={deptFilter} />}
-          {typeFilter && <input type="hidden" name="type" value={typeFilter} />}
           <button
             type="submit"
             aria-label="חיפוש"
