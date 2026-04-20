@@ -25,7 +25,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="h-full overflow-x-hidden">{children}</body>
+      <body className="h-full overflow-x-clip">{children}</body>
     </html>
   );
 }
