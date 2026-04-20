@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent, within } from "@testing-library/react";
 import type { CourseCandidate } from "@/types/database";
 
 // Mock next/navigation before importing the component
@@ -168,9 +168,10 @@ describe("CandidatesTable — bulk delete", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: /בחר יוסי לוי/ }));
     fireEvent.click(screen.getByRole("button", { name: /מחק נבחרים/ }));
 
-    expect(await screen.findByRole("heading", { name: /מחיקת 2 מועמדים/ })).toBeInTheDocument();
-    expect(screen.getByText("דנה כהן")).toBeInTheDocument();
-    expect(screen.getByText("יוסי לוי")).toBeInTheDocument();
+    const dialog = await screen.findByRole("dialog", { name: /מחיקת 2 מועמדים/ });
+    expect(dialog).toBeInTheDocument();
+    expect(within(dialog).getByText("דנה כהן")).toBeInTheDocument();
+    expect(within(dialog).getByText("יוסי לוי")).toBeInTheDocument();
   });
 
   it("cancel closes the dialog without calling deleteCandidates; selection preserved", async () => {

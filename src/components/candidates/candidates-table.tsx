@@ -262,9 +262,7 @@ export function CandidatesTable({ candidates }: CandidatesTableProps) {
                   />
                 </td>
                 <td className="px-3 py-2.5 font-medium text-gray-900">
-                  <span>{c.first_name}</span>
-                  {" "}
-                  <span>{c.last_name}</span>
+                  {c.first_name} {c.last_name}
                 </td>
                 <td className="px-3 py-2.5 text-gray-600" dir="ltr">
                   {c.id_number}
