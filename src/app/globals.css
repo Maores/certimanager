@@ -68,6 +68,18 @@ body {
   }
 }
 
+/* iOS Safari auto-zooms on form controls with font-size < 16px.
+   The zoom animation dismisses native <select> pickers mid-open,
+   producing a "first tap flickers open then closes, second tap works"
+   bug. Force 16px on mobile only — desktop keeps its own density. */
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
 /* Ensure numbers display LTR even in RTL context */
 [dir="rtl"] .ltr-nums {
   direction: ltr;
