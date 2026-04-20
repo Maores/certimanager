@@ -27,6 +27,7 @@ Use the `superpowers:dispatching-parallel-agents` skill. For each pair, send the
 > - Return a markdown block per finding using the schema in `tests/agents/harness/report-template.md`.
 > - If an Acceptance fails, record the finding then continue (don't halt unless the app is truly unusable).
 > - Do NOT fix bugs in the app. Only report.
+> - **Ignore Next.js dev-mode overlays.** The app runs under `next dev` on :3001, which injects a floating dev indicator (a small black circle at the bottom-left that can expand into a "Compiling…" / "Build Error" pill, plus any route-announcer or error-toast from the same family). In the DOM it appears inside elements like `nextjs-portal`, `[data-nextjs-toast]`, `[data-next-badge-root]`, or `__next-devtools`. These do **not** exist in production (`next build`). Do NOT report findings about them — not as bugs, not as UX, not as tap-target obstructions, not as visual overlap. If they interfere with a tap during your journey, click somewhere else or dismiss them, but the finding itself is out of scope.
 >
 > **Output format:** A single markdown document with all findings concatenated. No prose summary — that's the orchestrator's job.
 
