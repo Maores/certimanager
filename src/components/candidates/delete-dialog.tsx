@@ -27,10 +27,16 @@ export function DeleteDialog({ open, candidateNames, onConfirm, onCancel }: Dele
   const isBulk = candidateNames.length > 1;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" dir="rtl">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      dir="rtl"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="delete-dialog-title"
+    >
       <div className="mx-4 w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-bold text-gray-900">
+          <h3 id="delete-dialog-title" className="text-lg font-bold text-gray-900">
             {isBulk ? `מחיקת ${candidateNames.length} מועמדים` : "מחיקת מועמד"}
           </h3>
           <button
@@ -53,8 +59,8 @@ export function DeleteDialog({ open, candidateNames, onConfirm, onCancel }: Dele
         {isBulk && (
           <div className="mb-4 max-h-40 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-3">
             <ul className="space-y-1 text-sm text-gray-700">
-              {candidateNames.map((name, idx) => (
-                <li key={idx}>{name}</li>
+              {candidateNames.map((name) => (
+                <li key={name}>{name}</li>
               ))}
             </ul>
           </div>
