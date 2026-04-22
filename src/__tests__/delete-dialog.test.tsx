@@ -77,9 +77,14 @@ describe("DeleteDialog", () => {
   });
 
   it("invokes onConfirm and disables both buttons while loading", async () => {
-    const onConfirm = vi.fn().mockImplementation(
-      () => new Promise((resolve) => setTimeout(resolve, 50))
-    );
+    // Use a deferred promise we control rather than setTimeout, so the in-flight
+    // state persists deterministically regardless of test-pool load.
+    let resolveConfirm!: () => void;
+    const confirmPromise = new Promise<void>((resolve) => {
+      resolveConfirm = resolve;
+    });
+    const onConfirm = vi.fn().mockReturnValue(confirmPromise);
+
     render(
       <DeleteDialog
         open
@@ -93,9 +98,14 @@ describe("DeleteDialog", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /^מחק$/ }));
     expect(onConfirm).toHaveBeenCalledTimes(1);
-    // While in-flight, the confirm button shows a spinner label "מוחק..."
+    // While in-flight, the confirm button shows a spinner label "מוחק..." and
+    // is disabled. This assertion is stable because confirmPromise never resolves
+    // until we call resolveConfirm() below.
     expect(
       await screen.findByRole("button", { name: /מוחק\.\.\./ })
     ).toBeDisabled();
+
+    // Release the promise so the test doesn't leak a pending microtask.
+    resolveConfirm();
   });
 });
