@@ -382,3 +382,72 @@ export async function deleteCertImage(filePath: string) {
 
   await supabase.storage.from("cert-images").remove([filePath]);
 }
+
+export async function deleteCertifications(ids: string[]): Promise<{
+  deleted: number;
+  errors: string[];
+}> {
+  const result = { deleted: 0, errors: [] as string[] };
+  if (!Array.isArray(ids) || ids.length === 0) return result;
+
+  const guestSid = await getGuestSessionId();
+  if (guestSid) {
+    return {
+      deleted: 0,
+      errors: ["מחיקה מרובה אינה זמינה במצב אורח"],
+    };
+  }
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const imagePaths: string[] = [];
+
+  for (const id of ids) {
+    const { data: cert } = await supabase
+      .from("certifications")
+      .select("id, image_url, employees!inner(manager_id)")
+      .eq("id", id)
+      .single();
+
+    // Missing row OR cross-manager row: silent no-op per spec.
+    // Count as deleted because the end state (row inaccessible to this user) is correct.
+    const managerId =
+      cert && (cert.employees as unknown as { manager_id: string } | null)?.manager_id;
+    if (!cert || managerId !== user.id) {
+      result.deleted++;
+      continue;
+    }
+
+    const { error } = await supabase
+      .from("certifications")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      result.errors.push(`${id}: ${mapSupabaseError(error.message)}`);
+      continue;
+    }
+
+    result.deleted++;
+    if (cert.image_url) {
+      const path = cert.image_url.includes("/cert-images/")
+        ? cert.image_url.split("/cert-images/")[1]
+        : cert.image_url;
+      if (path) imagePaths.push(path);
+    }
+  }
+
+  // Best-effort storage cleanup. DB is authoritative; orphaned files are acceptable.
+  if (imagePaths.length > 0) {
+    try {
+      await supabase.storage.from("cert-images").remove(imagePaths);
+    } catch {
+      // Intentionally swallow — orphan is preferable to a failed bulk delete.
+    }
+  }
+
+  revalidatePath("/dashboard/certifications");
+  return result;
+}
