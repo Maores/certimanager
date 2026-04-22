@@ -93,7 +93,9 @@ describe("Mobile tap targets — server component source", () => {
   });
 
   it("certifications mobile cert card עריכה link and מחיקה button include min-h-[44px]", () => {
-    const src = source("src/app/dashboard/certifications/page.tsx");
+    // Mobile card JSX moved to the CertificationsList client component as
+    // part of the bulk-delete refactor. Scan the new location.
+    const src = source("src/components/certifications/certifications-list.tsx");
     // Narrow to the mobile cards block.
     const mobileIdx = src.indexOf("{/* Mobile cards */}");
     expect(mobileIdx).toBeGreaterThan(-1);

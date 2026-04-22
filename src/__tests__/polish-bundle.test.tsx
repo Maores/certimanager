@@ -16,7 +16,9 @@ function source(relPath: string): string {
 
 describe("polish — unknown-status badge uses amber variant", () => {
   it("certifications list page unknown entry uses bg-amber-*", () => {
-    const src = source("src/app/dashboard/certifications/page.tsx");
+    // statusConfig moved to the CertificationsList client component as part of
+    // the bulk-delete refactor. Scan the new location.
+    const src = source("src/components/certifications/certifications-list.tsx");
     const match = src.match(/unknown:\s*{[^}]*}/);
     expect(match, "unknown config not found").toBeTruthy();
     expect(match![0]).toMatch(/bg-amber-/);
