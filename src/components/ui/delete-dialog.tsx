@@ -68,8 +68,8 @@ export function DeleteDialog({
         {isBulk && (
           <div className="mb-4 max-h-40 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-3">
             <ul className="space-y-1 text-sm text-gray-700">
-              {itemNames.map((name) => (
-                <li key={name}>{name}</li>
+              {itemNames.map((name, i) => (
+                <li key={`${i}-${name}`}>{name}</li>
               ))}
             </ul>
           </div>
