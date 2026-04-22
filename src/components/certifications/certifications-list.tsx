@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, Paperclip, FileText, Image } from "lucide-react";
+import { Trash2, Paperclip, FileText, Image as ImageIcon } from "lucide-react";
 import { deleteCertification, deleteCertifications } from "@/app/dashboard/certifications/actions";
 import { DeleteButton } from "@/components/ui/delete-button";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
@@ -36,6 +36,10 @@ export interface CertRow {
   next_refresh_date: string | null;
   image_url: string | null;
   status: CertStatus;
+}
+
+function certLabel(c: Pick<CertRow, "employee_name" | "cert_type_name">): string {
+  return `${c.employee_name} — ${c.cert_type_name}`;
 }
 
 interface CertificationsListProps {
@@ -80,7 +84,7 @@ export function CertificationsList({ certs, isGuest }: CertificationsListProps) 
     const ids = Array.from(selected);
     const names = ids.map((id) => {
       const c = certs.find((cc) => cc.id === id);
-      return c ? `${c.employee_name} — ${c.cert_type_name}` : id;
+      return c ? certLabel(c) : id;
     });
     setDeleteDialog({ open: true, ids, names });
   }
@@ -92,14 +96,22 @@ export function CertificationsList({ certs, isGuest }: CertificationsListProps) 
       const result = await deleteCertifications(deleteDialog.ids);
       if (result.errors.length > 0) {
         setError(`נמחקו ${result.deleted}. שגיאות: ${result.errors.join(", ")}`);
+        // Per spec: failing rows remain selected so the user can retry.
+        // Errors format is "${id}: message" — recover the failed ids by splitting on the first ":".
+        const failedIds = new Set(
+          result.errors.map((e) => e.slice(0, e.indexOf(":")).trim())
+        );
+        setSelected(failedIds);
       } else {
         setSuccess(`נמחקו ${result.deleted} הסמכות`);
+        setSelected(new Set());
       }
       setDeleteDialog({ open: false, ids: [], names: [] });
-      setSelected(new Set());
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "שגיאה במחיקה");
+      // On thrown error (network/auth), nothing was reliably deleted — preserve
+      // selection so the user can retry with one click after dismissing the banner.
       setDeleteDialog({ open: false, ids: [], names: [] });
     }
   }
@@ -183,7 +195,7 @@ export function CertificationsList({ certs, isGuest }: CertificationsListProps) 
           <tbody className="divide-y" style={{ borderColor: "#e2e8f0" }}>
             {certs.map((cert) => {
               const sc = statusConfig[cert.status];
-              const label = `${cert.employee_name} — ${cert.cert_type_name}`;
+              const label = certLabel(cert);
               return (
                 <tr key={cert.id} className="transition-colors duration-150">
                   {showBulkUI && (
@@ -205,7 +217,7 @@ export function CertificationsList({ certs, isGuest }: CertificationsListProps) 
                         {cert.image_url.endsWith(".pdf") ? (
                           <FileText className="h-3.5 w-3.5" />
                         ) : (
-                          <Image className="h-3.5 w-3.5" />
+                          <ImageIcon className="h-3.5 w-3.5" />
                         )}
                         מצורף
                       </span>
@@ -232,10 +244,7 @@ export function CertificationsList({ certs, isGuest }: CertificationsListProps) 
                         עריכה
                       </Link>
                       <DeleteButton
-                        action={async () => {
-                          "use server";
-                          await deleteCertification(cert.id);
-                        }}
+                        action={() => deleteCertification(cert.id)}
                       />
                     </div>
                   </td>
@@ -321,12 +330,7 @@ export function CertificationsList({ certs, isGuest }: CertificationsListProps) 
                 >
                   עריכה
                 </Link>
-                <form
-                  action={async () => {
-                    "use server";
-                    await deleteCertification(cert.id);
-                  }}
-                >
+                <form action={() => deleteCertification(cert.id)}>
                   <button
                     type="submit"
                     className="inline-flex min-h-[44px] items-center text-sm font-medium transition-colors touch-manipulation"

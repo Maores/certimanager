@@ -255,7 +255,7 @@ describe("CertificationsList — bulk delete flow", () => {
     ).toBeChecked();
   });
 
-  it("partial failure surfaces an error banner and keeps the successful deletes", async () => {
+  it("partial failure surfaces an error banner AND keeps failed rows selected for retry", async () => {
     deleteCertifications.mockResolvedValue({
       deleted: 1,
       errors: ["b: permission denied"],
@@ -285,5 +285,52 @@ describe("CertificationsList — bulk delete flow", () => {
       expect(alert).toHaveTextContent(/נמחקו 1/);
       expect(alert).toHaveTextContent(/permission denied/);
     });
+
+    // Per spec: failing rows stay selected so the user can retry.
+    // The successful row "a" is no longer checked (router.refresh would remove it),
+    // but "b" (the failure) should remain checked in the component state.
+    expect(
+      desktop().getByRole("checkbox", { name: /בחר .*יוסי לוי/ })
+    ).toBeChecked();
+    expect(
+      desktop().getByRole("checkbox", { name: /בחר .*דנה כהן/ })
+    ).not.toBeChecked();
+  });
+
+  it("thrown error preserves selection and shows the error banner", async () => {
+    deleteCertifications.mockRejectedValue(new Error("network boom"));
+
+    render(
+      <CertificationsList
+        isGuest={false}
+        certs={[
+          makeCert({ id: "a", employee_name: "דנה כהן" }),
+          makeCert({ id: "b", employee_name: "יוסי לוי" }),
+        ]}
+      />
+    );
+
+    fireEvent.click(
+      desktop().getByRole("checkbox", { name: /בחר .*דנה כהן/ })
+    );
+    fireEvent.click(
+      desktop().getByRole("checkbox", { name: /בחר .*יוסי לוי/ })
+    );
+    fireEvent.click(screen.getByRole("button", { name: /מחק נבחרים/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /^מחק$/ }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(/network boom/);
+    });
+    // Dialog closed; both selections preserved so the user can retry cleanly.
+    expect(
+      screen.queryByRole("heading", { name: /מחיקת/ })
+    ).not.toBeInTheDocument();
+    expect(
+      desktop().getByRole("checkbox", { name: /בחר .*דנה כהן/ })
+    ).toBeChecked();
+    expect(
+      desktop().getByRole("checkbox", { name: /בחר .*יוסי לוי/ })
+    ).toBeChecked();
   });
 });
