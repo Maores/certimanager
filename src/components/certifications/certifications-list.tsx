@@ -259,7 +259,7 @@ export function CertificationsList({ certs, isGuest }: CertificationsListProps) 
       <div data-testid="certs-mobile" className="md:hidden space-y-3">
         {certs.map((cert) => {
           const sc = statusConfig[cert.status];
-          const label = `${cert.employee_name} — ${cert.cert_type_name}`;
+          const label = certLabel(cert);
           return (
             <div
               key={cert.id}
