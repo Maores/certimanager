@@ -1,28 +1,12 @@
 import { requireUser } from "@/lib/supabase/auth";
 import { getGuestSessionId } from "@/lib/guest-session";
 import { guestGetCertTypes, guestGetCertifications, getGuestData } from "@/lib/guest-store";
-import { getCertStatus, formatDateHe } from "@/types/database";
+import { getCertStatus } from "@/types/database";
 import type { CertStatus } from "@/types/database";
 import Link from "next/link";
-import { deleteCertification } from "./actions";
-import { DeleteButton } from "@/components/ui/delete-button";
-import { Search, Plus, Paperclip, FileText, Image } from "lucide-react";
+import { Search, Plus } from "lucide-react";
 import { AutoSubmitSelect } from "@/components/ui/auto-submit-select";
-
-const statusConfig: Record<
-  CertStatus,
-  { label: string; bg: string; text: string; dot: string }
-> = {
-  valid: { label: "בתוקף", bg: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500" },
-  unknown: { label: "לא ידוע", bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-500" },
-  expiring_soon: {
-    label: "פג בקרוב",
-    bg: "bg-amber-50",
-    text: "text-amber-700",
-    dot: "bg-amber-500",
-  },
-  expired: { label: "פג תוקף", bg: "bg-red-50", text: "text-red-700", dot: "bg-red-500" },
-};
+import { CertificationsList, type CertRow } from "@/components/certifications/certifications-list";
 
 type FilterTab = "all" | CertStatus;
 
@@ -46,9 +30,11 @@ export default async function CertificationsPage({
 
   const guestSid = await getGuestSessionId();
 
-  let certTypes: any[] | null;
+  let certTypes: { id: string; name: string }[] | null;
   let departments: string[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let certifications: any[] | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let error: any = null;
 
   if (guestSid) {
@@ -105,13 +91,19 @@ export default async function CertificationsPage({
   }
 
   // Transform and filter
-  const allCerts = (certifications || []).map((cert: any) => ({
-    ...cert,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const allCerts: CertRow[] = (certifications || []).map((cert: any) => ({
+    id: cert.id,
     employee_name: cert.employees
       ? `${cert.employees.first_name} ${cert.employees.last_name}`
       : "לא ידוע",
     employee_department: cert.employees?.department || "",
+    cert_type_id: cert.cert_type_id,
     cert_type_name: cert.cert_types?.name || "לא ידוע",
+    issue_date: cert.issue_date,
+    expiry_date: cert.expiry_date,
+    next_refresh_date: cert.next_refresh_date,
+    image_url: cert.image_url,
     status: getCertStatus(cert.expiry_date, cert.next_refresh_date),
   }));
 
@@ -189,7 +181,7 @@ export default async function CertificationsPage({
           className="rounded-lg border border-border bg-white px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-ring cursor-pointer sm:w-44"
         >
           <option value="">כל סוגי ההסמכה</option>
-          {(certTypes || []).map((ct: any) => (
+          {(certTypes || []).map((ct) => (
             <option key={ct.id} value={ct.id}>{ct.name}</option>
           ))}
         </AutoSubmitSelect>
@@ -204,9 +196,7 @@ export default async function CertificationsPage({
               key={tab.key}
               href={`/dashboard/certifications?filter=${tab.key}${searchQuery ? `&search=${searchQuery}` : ""}${deptFilter ? `&dept=${deptFilter}` : ""}${typeFilter ? `&type=${typeFilter}` : ""}`}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-150 ${
-                isActive
-                  ? "text-white"
-                  : "hover:text-[#0f172a]"
+                isActive ? "text-white" : "hover:text-[#0f172a]"
               }`}
               style={
                 isActive
@@ -229,7 +219,6 @@ export default async function CertificationsPage({
         {filtered.length} הסמכות נמצאו
       </p>
 
-      {/* Cards grid */}
       {filtered.length === 0 ? (
         <div
           className="text-center py-16 rounded-xl"
@@ -247,206 +236,7 @@ export default async function CertificationsPage({
           </p>
         </div>
       ) : (
-        <>
-          {/* Desktop table */}
-          <div
-            className="hidden md:block rounded-xl overflow-x-auto"
-            style={{
-              backgroundColor: "#fff",
-              border: "1px solid #e2e8f0",
-              boxShadow: "var(--shadow-sm)",
-            }}
-          >
-            <table className="w-full">
-              <caption className="sr-only">רשימת הסמכות</caption>
-              <thead>
-                <tr style={{ backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
-                  <th scope="col" className="text-right px-6 py-3.5 text-sm font-medium" style={{ color: "#64748b" }}>
-                    עובד
-                  </th>
-                  <th scope="col" className="text-right px-6 py-3.5 text-sm font-medium" style={{ color: "#64748b" }}>
-                    סוג הסמכה
-                  </th>
-                  <th scope="col" className="text-right px-6 py-3.5 text-sm font-medium" style={{ color: "#64748b" }}>
-                    קובץ
-                  </th>
-                  <th scope="col" className="text-right px-6 py-3.5 text-sm font-medium" style={{ color: "#64748b" }}>
-                    תאריך הנפקה
-                  </th>
-                  <th scope="col" className="text-right px-6 py-3.5 text-sm font-medium" style={{ color: "#64748b" }}>
-                    תאריך תפוגה
-                  </th>
-                  <th scope="col" className="text-right px-6 py-3.5 text-sm font-medium" style={{ color: "#64748b" }}>
-                    מועד רענון הבא
-                  </th>
-                  <th scope="col" className="text-right px-6 py-3.5 text-sm font-medium" style={{ color: "#64748b" }}>
-                    סטטוס
-                  </th>
-                  <th scope="col" className="text-right px-6 py-3.5 text-sm font-medium" style={{ color: "#64748b" }}>
-                    פעולות
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y" style={{ borderColor: "#e2e8f0" }}>
-                {filtered.map((cert: any) => {
-                  const sc = statusConfig[cert.status as CertStatus];
-                  return (
-                    <tr
-                      key={cert.id}
-                      className="transition-colors duration-150"
-                      style={{ cursor: "default" }}
-                      onMouseEnter={undefined}
-                    >
-                      <td className="px-6 py-4 text-sm font-medium" style={{ color: "#0f172a" }}>
-                        {cert.employee_name}
-                      </td>
-                      <td className="px-6 py-4 text-sm" style={{ color: "#64748b" }}>
-                        {cert.cert_type_name}
-                      </td>
-                      <td className="px-6 py-4">
-                        {cert.image_url ? (
-                          <span className="inline-flex items-center gap-1.5 text-xs bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full font-medium">
-                            {cert.image_url.endsWith(".pdf") ? (
-                              <FileText className="h-3.5 w-3.5" />
-                            ) : (
-                              <Image className="h-3.5 w-3.5" />
-                            )}
-                            מצורף
-                          </span>
-                        ) : (
-                          <span className="text-xs" style={{ color: "#94a3b8" }}>—</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-sm" style={{ color: "#64748b" }}>
-                        {formatDateHe(cert.issue_date)}
-                      </td>
-                      <td className="px-6 py-4 text-sm" style={{ color: "#64748b" }}>
-                        {formatDateHe(cert.expiry_date)}
-                      </td>
-                      <td className="px-6 py-4 text-sm" style={{ color: "#64748b" }}>
-                        {formatDateHe(cert.next_refresh_date)}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${sc.bg} ${sc.text}`}
-                        >
-                          <span className={`h-1.5 w-1.5 rounded-full ${sc.dot}`} aria-hidden="true" />
-                          {sc.label}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <Link
-                            href={`/dashboard/certifications/${cert.id}/edit`}
-                            className="text-sm font-medium transition-colors"
-                            style={{ color: "#2563eb" }}
-                          >
-                            עריכה
-                          </Link>
-                          <DeleteButton
-                            action={async () => {
-                              "use server";
-                              await deleteCertification(cert.id);
-                            }}
-                          />
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile cards */}
-          <div className="md:hidden space-y-3">
-            {filtered.map((cert: any) => {
-              const sc = statusConfig[cert.status as CertStatus];
-              return (
-                <div
-                  key={cert.id}
-                  className="rounded-xl p-4 space-y-3 transition-colors duration-150"
-                  style={{
-                    backgroundColor: "#fff",
-                    border: "1px solid #e2e8f0",
-                    boxShadow: "var(--shadow-sm)",
-                  }}
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-semibold" style={{ color: "#0f172a" }}>
-                        {cert.employee_name}
-                      </h3>
-                      <p className="text-sm" style={{ color: "#64748b" }}>
-                        {cert.cert_type_name}
-                      </p>
-                    </div>
-                    <span
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${sc.bg} ${sc.text}`}
-                    >
-                      <span className={`h-1.5 w-1.5 rounded-full ${sc.dot}`} aria-hidden="true" />
-                      {sc.label}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div>
-                      <span style={{ color: "#94a3b8" }}>הנפקה: </span>
-                      <span style={{ color: "#0f172a" }}>
-                        {formatDateHe(cert.issue_date)}
-                      </span>
-                    </div>
-                    <div>
-                      <span style={{ color: "#94a3b8" }}>תפוגה: </span>
-                      <span style={{ color: "#0f172a" }}>
-                        {formatDateHe(cert.expiry_date)}
-                      </span>
-                    </div>
-                    {cert.next_refresh_date && (
-                      <div>
-                        <span style={{ color: "#94a3b8" }}>מועד רענון הבא: </span>
-                        <span style={{ color: "#0f172a" }}>
-                          {formatDateHe(cert.next_refresh_date)}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {cert.image_url && (
-                    <div className="flex items-center gap-1.5 text-xs text-emerald-700">
-                      <Paperclip className="h-3.5 w-3.5" />
-                      קובץ מצורף
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-3 pt-3" style={{ borderTop: "1px solid #f1f5f9" }}>
-                    <Link
-                      href={`/dashboard/certifications/${cert.id}/edit`}
-                      className="inline-flex min-h-[44px] items-center text-sm font-medium transition-colors touch-manipulation"
-                      style={{ color: "#2563eb" }}
-                    >
-                      עריכה
-                    </Link>
-                    <form
-                      action={async () => {
-                        "use server";
-                        await deleteCertification(cert.id);
-                      }}
-                    >
-                      <button
-                        type="submit"
-                        className="inline-flex min-h-[44px] items-center text-sm font-medium transition-colors touch-manipulation"
-                        style={{ color: "#dc2626" }}
-                      >
-                        מחיקה
-                      </button>
-                    </form>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </>
+        <CertificationsList certs={filtered} isGuest={Boolean(guestSid)} />
       )}
     </div>
   );

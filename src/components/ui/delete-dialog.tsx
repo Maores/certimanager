@@ -5,12 +5,21 @@ import { Loader2, Trash2, X } from "lucide-react";
 
 interface DeleteDialogProps {
   open: boolean;
-  candidateNames: string[];
+  itemNames: string[];
+  noun: string;
+  nounPlural: string;
   onConfirm: () => Promise<void>;
   onCancel: () => void;
 }
 
-export function DeleteDialog({ open, candidateNames, onConfirm, onCancel }: DeleteDialogProps) {
+export function DeleteDialog({
+  open,
+  itemNames,
+  noun,
+  nounPlural,
+  onConfirm,
+  onCancel,
+}: DeleteDialogProps) {
   const [loading, setLoading] = useState(false);
 
   if (!open) return null;
@@ -24,7 +33,7 @@ export function DeleteDialog({ open, candidateNames, onConfirm, onCancel }: Dele
     }
   }
 
-  const isBulk = candidateNames.length > 1;
+  const isBulk = itemNames.length > 1;
 
   return (
     <div
@@ -37,7 +46,7 @@ export function DeleteDialog({ open, candidateNames, onConfirm, onCancel }: Dele
       <div className="mx-4 w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
           <h3 id="delete-dialog-title" className="text-lg font-bold text-gray-900">
-            {isBulk ? `מחיקת ${candidateNames.length} מועמדים` : "מחיקת מועמד"}
+            {isBulk ? `מחיקת ${itemNames.length} ${nounPlural}` : `מחיקת ${noun}`}
           </h3>
           <button
             type="button"
@@ -52,15 +61,15 @@ export function DeleteDialog({ open, candidateNames, onConfirm, onCancel }: Dele
 
         <p className="mb-3 text-sm text-gray-600">
           {isBulk
-            ? `האם למחוק ${candidateNames.length} מועמדים? פעולה זו אינה ניתנת לביטול.`
-            : `האם למחוק את ${candidateNames[0]}? פעולה זו אינה ניתנת לביטול.`}
+            ? `האם למחוק ${itemNames.length} ${nounPlural}? פעולה זו אינה ניתנת לביטול.`
+            : `האם למחוק את ${itemNames[0]}? פעולה זו אינה ניתנת לביטול.`}
         </p>
 
         {isBulk && (
           <div className="mb-4 max-h-40 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-3">
             <ul className="space-y-1 text-sm text-gray-700">
-              {candidateNames.map((name) => (
-                <li key={name}>{name}</li>
+              {itemNames.map((name, i) => (
+                <li key={`${i}-${name}`}>{name}</li>
               ))}
             </ul>
           </div>

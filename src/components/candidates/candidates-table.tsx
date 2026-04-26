@@ -13,7 +13,7 @@ import {
   promoteCandidates,
 } from "@/app/dashboard/candidates/actions";
 import { PromoteDialog } from "./promote-dialog";
-import { DeleteDialog } from "./delete-dialog";
+import { DeleteDialog } from "@/components/ui/delete-dialog";
 
 interface CandidatesTableProps {
   candidates: CourseCandidate[];
@@ -346,7 +346,9 @@ export function CandidatesTable({ candidates }: CandidatesTableProps) {
 
       <DeleteDialog
         open={deleteDialog.open}
-        candidateNames={deleteDialog.names}
+        itemNames={deleteDialog.names}
+        noun="מועמד"
+        nounPlural="מועמדים"
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeleteDialog({ open: false, ids: [], names: [] })}
       />
