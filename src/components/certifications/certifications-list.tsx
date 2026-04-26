@@ -7,8 +7,7 @@ import { Trash2, Paperclip, FileText, Image as ImageIcon } from "lucide-react";
 import { deleteCertification, deleteCertifications } from "@/app/dashboard/certifications/actions";
 import { DeleteButton } from "@/components/ui/delete-button";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
-import type { CertStatus, CertRow } from "@/types/database";
-import { formatDateHe } from "@/types/database";
+import { formatDateHe, type CertStatus, type CertRow } from "@/types/database";
 
 const statusConfig: Record<
   CertStatus,
