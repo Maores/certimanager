@@ -154,6 +154,12 @@ describe("CandidatesTable — RTL column alignment", () => {
     const cell = screen.getByRole("cell", { name: "111222333" });
     expect(cell.className.split(/\s+/)).toContain("text-right");
   });
+
+  it("right-aligns the phone value cell so it lines up with the right-aligned column header", () => {
+    render(<CandidatesTable candidates={[makeCandidate({ phone: "050-1234567" })]} />);
+    const cell = screen.getByRole("cell", { name: "050-1234567" });
+    expect(cell.className.split(/\s+/)).toContain("text-right");
+  });
 });
 
 describe("CandidatesTable — bulk delete", () => {
