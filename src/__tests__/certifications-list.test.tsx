@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent, within } from "@testing-library/react";
-import type { CertStatus } from "@/types/database";
+import type { CertRow } from "@/types/database";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
@@ -14,19 +14,6 @@ vi.mock("@/app/dashboard/certifications/actions", () => ({
 
 // Import after mocks
 import { CertificationsList } from "@/components/certifications/certifications-list";
-
-type CertRow = {
-  id: string;
-  employee_name: string;
-  employee_department: string;
-  cert_type_id: string;
-  cert_type_name: string;
-  issue_date: string | null;
-  expiry_date: string | null;
-  next_refresh_date: string | null;
-  image_url: string | null;
-  status: CertStatus;
-};
 
 function makeCert(overrides: Partial<CertRow> = {}): CertRow {
   return {

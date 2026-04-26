@@ -7,7 +7,7 @@ import { Trash2, Paperclip, FileText, Image as ImageIcon } from "lucide-react";
 import { deleteCertification, deleteCertifications } from "@/app/dashboard/certifications/actions";
 import { DeleteButton } from "@/components/ui/delete-button";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
-import type { CertStatus } from "@/types/database";
+import type { CertStatus, CertRow } from "@/types/database";
 import { formatDateHe } from "@/types/database";
 
 const statusConfig: Record<
@@ -24,19 +24,6 @@ const statusConfig: Record<
   },
   expired: { label: "פג תוקף", bg: "bg-red-50", text: "text-red-700", dot: "bg-red-500" },
 };
-
-export interface CertRow {
-  id: string;
-  employee_name: string;
-  employee_department: string;
-  cert_type_id: string;
-  cert_type_name: string;
-  issue_date: string | null;
-  expiry_date: string | null;
-  next_refresh_date: string | null;
-  image_url: string | null;
-  status: CertStatus;
-}
 
 function certLabel(c: Pick<CertRow, "employee_name" | "cert_type_name">): string {
   return `${c.employee_name} — ${c.cert_type_name}`;

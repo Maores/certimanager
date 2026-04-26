@@ -2,11 +2,11 @@ import { requireUser } from "@/lib/supabase/auth";
 import { getGuestSessionId } from "@/lib/guest-session";
 import { guestGetCertTypes, guestGetCertifications, getGuestData } from "@/lib/guest-store";
 import { getCertStatus } from "@/types/database";
-import type { CertStatus } from "@/types/database";
+import type { CertStatus, CertRow } from "@/types/database";
 import Link from "next/link";
 import { Search, Plus } from "lucide-react";
 import { AutoSubmitSelect } from "@/components/ui/auto-submit-select";
-import { CertificationsList, type CertRow } from "@/components/certifications/certifications-list";
+import { CertificationsList } from "@/components/certifications/certifications-list";
 
 type FilterTab = "all" | CertStatus;
 
