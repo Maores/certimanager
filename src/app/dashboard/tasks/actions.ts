@@ -151,3 +151,55 @@ export async function deleteTask(taskId: string) {
 
   revalidatePath("/dashboard/tasks");
 }
+
+export async function deleteTasks(ids: string[]): Promise<{
+  deleted: number;
+  errors: string[];
+}> {
+  const result = { deleted: 0, errors: [] as string[] };
+  if (!Array.isArray(ids) || ids.length === 0) return result;
+
+  const guestSid = await getGuestSessionId();
+  if (guestSid) {
+    return {
+      deleted: 0,
+      errors: ["משימות אינן זמינות במצב אורח"],
+    };
+  }
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  for (const id of ids) {
+    const { data: task } = await supabase
+      .from("employee_tasks")
+      .select("id, employees!inner(manager_id)")
+      .eq("id", id)
+      .single();
+
+    // Missing row OR cross-manager row: silent no-op per spec.
+    // Count as deleted because the end state (row inaccessible to this user) is correct.
+    const managerId =
+      task && (task.employees as unknown as { manager_id: string } | null)?.manager_id;
+    if (!task || managerId !== user.id) {
+      result.deleted++;
+      continue;
+    }
+
+    const { error } = await supabase
+      .from("employee_tasks")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      result.errors.push(`${id}: שגיאה במחיקה`);
+      continue;
+    }
+
+    result.deleted++;
+  }
+
+  revalidatePath("/dashboard/tasks");
+  return result;
+}
