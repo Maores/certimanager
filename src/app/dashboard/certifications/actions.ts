@@ -35,6 +35,7 @@ export async function createCertification(formData: FormData) {
     const expiry_date = formData.get("expiry_date") as string;
     const next_refresh_date = formData.get("next_refresh_date") as string;
     const image_url = formData.get("image_url") as string | null;
+    const image_filename = formData.get("image_filename") as string | null;
     const notes = formData.get("notes") as string | null;
 
     if (issue_date && expiry_date && expiry_date < issue_date) {
@@ -62,6 +63,7 @@ export async function createCertification(formData: FormData) {
       expiry_date: expiry_date || null,
       next_refresh_date: next_refresh_date || null,
       image_url: image_url || null,
+      image_filename: image_filename || null,
       notes: notes || null,
     });
 
@@ -80,6 +82,7 @@ export async function createCertification(formData: FormData) {
   const expiry_date = formData.get("expiry_date") as string;
   const next_refresh_date = formData.get("next_refresh_date") as string;
   const image_url = formData.get("image_url") as string | null;
+  const image_filename = formData.get("image_filename") as string | null;
   const notes = formData.get("notes") as string | null;
 
   if (issue_date && expiry_date && expiry_date < issue_date) {
@@ -126,6 +129,7 @@ export async function createCertification(formData: FormData) {
     expiry_date: expiry_date || null,
     next_refresh_date: next_refresh_date || null,
     image_url: image_url || null,
+    image_filename: image_filename || null,
     notes: notes || null,
   });
 
@@ -146,6 +150,7 @@ export async function updateCertification(id: string, formData: FormData) {
     const expiry_date = formData.get("expiry_date") as string;
     const next_refresh_date = formData.get("next_refresh_date") as string;
     const image_url = formData.get("image_url") as string | null;
+    const image_filename = formData.get("image_filename") as string | null;
     const notes = formData.get("notes") as string | null;
 
     if (issue_date && expiry_date && expiry_date < issue_date) {
@@ -159,6 +164,7 @@ export async function updateCertification(id: string, formData: FormData) {
       expiry_date: expiry_date || null,
       next_refresh_date: next_refresh_date || null,
       image_url: image_url || null,
+      image_filename: image_filename || null,
       notes: notes || null,
     });
 
@@ -191,6 +197,7 @@ export async function updateCertification(id: string, formData: FormData) {
   const expiry_date = formData.get("expiry_date") as string;
   const next_refresh_date = formData.get("next_refresh_date") as string;
   const image_url = formData.get("image_url") as string | null;
+  const image_filename = formData.get("image_filename") as string | null;
   const notes = formData.get("notes") as string | null;
 
   if (issue_date && expiry_date && expiry_date < issue_date) {
@@ -224,6 +231,7 @@ export async function updateCertification(id: string, formData: FormData) {
       expiry_date: expiry_date || null,
       next_refresh_date: next_refresh_date || null,
       image_url: image_url || null,
+      image_filename: image_filename || null,
       notes: notes || null,
     })
     .eq("id", id);
@@ -326,8 +334,10 @@ export async function uploadCertImage(formData: FormData) {
     throw new Error(`שגיאה בהעלאת הקובץ: ${uploadError.message}`);
   }
 
-  // Return the storage path (not a public URL — bucket is private)
-  return filePath;
+  // Return the storage path (private bucket — caller signs on demand)
+  // alongside the original filename so the list UI can show something
+  // recognizable instead of a generic "מצורף" badge.
+  return { path: filePath, filename: file.name };
 }
 
 export async function getSignedUrl(filePath: string) {

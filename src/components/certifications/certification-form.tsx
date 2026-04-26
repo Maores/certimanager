@@ -69,6 +69,9 @@ export default function CertificationForm({
   const [imageUrl, setImageUrl] = useState(
     certification?.image_url || ""
   );
+  const [imageFilename, setImageFilename] = useState(
+    certification?.image_filename || ""
+  );
   const [imagePreview, setImagePreview] = useState<string | null>(
     certification?.image_url || null
   );
@@ -166,13 +169,15 @@ export default function CertificationForm({
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const path = await uploadCertImage(fd);
+      const { path, filename } = await uploadCertImage(fd);
       setImageUrl(path);
+      setImageFilename(filename);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "שגיאה בהעלאת הקובץ";
       alert(msg);
       setImagePreview(certification?.image_url || null);
       setImageUrl(certification?.image_url || "");
+      setImageFilename(certification?.image_filename || "");
     } finally {
       setUploading(false);
     }
@@ -183,6 +188,7 @@ export default function CertificationForm({
       await deleteCertImage(imageUrl);
     }
     setImageUrl("");
+    setImageFilename("");
     setImagePreview(null);
   }
 
@@ -203,6 +209,7 @@ export default function CertificationForm({
       }
 
       formData.set("image_url", imageUrl);
+      formData.set("image_filename", imageFilename);
       formData.set("expiry_date", expiryDate);
       formData.set("next_refresh_date", nextRefreshDate);
 
@@ -407,6 +414,7 @@ export default function CertificationForm({
           </div>
         </div>
         <input type="hidden" name="image_url" value={imageUrl} />
+        <input type="hidden" name="image_filename" value={imageFilename} />
       </div>
 
       {/* Notes */}

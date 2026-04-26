@@ -7,9 +7,11 @@ vi.mock("next/navigation", () => ({
 }));
 
 const deleteCertifications = vi.fn();
+const getSignedUrl = vi.fn();
 vi.mock("@/app/dashboard/certifications/actions", () => ({
   deleteCertifications: (...args: unknown[]) => deleteCertifications(...args),
   deleteCertification: vi.fn(),
+  getSignedUrl: (...args: unknown[]) => getSignedUrl(...args),
 }));
 
 // Import after mocks
@@ -26,6 +28,7 @@ function makeCert(overrides: Partial<CertRow> = {}): CertRow {
     expiry_date: "2027-01-01",
     next_refresh_date: null,
     image_url: null,
+    image_filename: null,
     status: "valid",
     ...overrides,
   };
@@ -319,5 +322,110 @@ describe("CertificationsList — bulk delete flow", () => {
     expect(
       desktop().getByRole("checkbox", { name: /בחר .*יוסי לוי/ })
     ).toBeChecked();
+  });
+});
+
+describe("CertificationsList — file column", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("renders the captured filename when image_filename is set", () => {
+    render(
+      <CertificationsList
+        isGuest={false}
+        certs={[
+          makeCert({
+            image_url: "certs/abc.pdf",
+            image_filename: "תעודת נהיגה.pdf",
+          }),
+        ]}
+      />
+    );
+    expect(desktop().getByText("תעודת נהיגה.pdf")).toBeInTheDocument();
+  });
+
+  it("falls back to a generic 'קובץ' label when image_url is set but image_filename is null (legacy row)", () => {
+    render(
+      <CertificationsList
+        isGuest={false}
+        certs={[makeCert({ image_url: "certs/abc.pdf", image_filename: null })]}
+      />
+    );
+    // Note: the "קובץ" column header also matches getByText, so scope to the
+    // file button by its accessible name (which falls back to "המצורף" when
+    // no filename was captured).
+    const btn = desktop().getByRole("button", { name: /פתח קובץ המצורף/ });
+    expect(btn).toHaveTextContent("קובץ");
+  });
+
+  it("renders a dash and no clickable button when there is no image", () => {
+    render(
+      <CertificationsList
+        isGuest={false}
+        certs={[makeCert({ image_url: null, image_filename: null })]}
+      />
+    );
+    expect(
+      desktop().queryByRole("button", { name: /פתח קובץ/ })
+    ).not.toBeInTheDocument();
+  });
+
+  it("clicking the file button calls getSignedUrl and opens the URL in a new tab", async () => {
+    getSignedUrl.mockResolvedValue("https://signed.example.com/abc.pdf?token=xyz");
+    const openSpy = vi.spyOn(window, "open").mockReturnValue(null);
+
+    render(
+      <CertificationsList
+        isGuest={false}
+        certs={[
+          makeCert({
+            image_url: "certs/abc.pdf",
+            image_filename: "תעודה.pdf",
+          }),
+        ]}
+      />
+    );
+
+    fireEvent.click(
+      desktop().getByRole("button", { name: /פתח קובץ תעודה\.pdf/ })
+    );
+
+    await waitFor(() => {
+      expect(getSignedUrl).toHaveBeenCalledWith("certs/abc.pdf");
+    });
+    await waitFor(() => {
+      expect(openSpy).toHaveBeenCalledWith(
+        "https://signed.example.com/abc.pdf?token=xyz",
+        "_blank",
+        "noopener,noreferrer"
+      );
+    });
+
+    openSpy.mockRestore();
+  });
+
+  it("surfaces an error banner when getSignedUrl returns null (no permission)", async () => {
+    getSignedUrl.mockResolvedValue(null);
+
+    render(
+      <CertificationsList
+        isGuest={false}
+        certs={[
+          makeCert({
+            image_url: "certs/abc.pdf",
+            image_filename: "תעודה.pdf",
+          }),
+        ]}
+      />
+    );
+
+    fireEvent.click(
+      desktop().getByRole("button", { name: /פתח קובץ תעודה\.pdf/ })
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(/לא ניתן לפתוח את הקובץ/);
+    });
   });
 });

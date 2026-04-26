@@ -45,6 +45,7 @@ CREATE TABLE certifications (
   expiry_date DATE,
   next_refresh_date DATE,
   image_url TEXT,
+  image_filename TEXT,
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()

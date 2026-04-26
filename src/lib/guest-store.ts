@@ -42,11 +42,11 @@ function seed(): GuestData {
   ];
 
   const certifications: Certification[] = [
-    { id: "g-cert-1", employee_id: "g-emp-1", cert_type_id: "g-ct-1", issue_date: "2025-06-01", expiry_date: sixtyDays, next_refresh_date: null, image_url: null, notes: null, created_at: now, updated_at: now },
-    { id: "g-cert-2", employee_id: "g-emp-1", cert_type_id: "g-ct-2", issue_date: "2025-01-15", expiry_date: tenDaysAgo, next_refresh_date: null, image_url: null, notes: null, created_at: now, updated_at: now },
-    { id: "g-cert-3", employee_id: "g-emp-2", cert_type_id: "g-ct-1", issue_date: "2025-08-01", expiry_date: fiveDays, next_refresh_date: null, image_url: null, notes: null, created_at: now, updated_at: now },
-    { id: "g-cert-4", employee_id: "g-emp-3", cert_type_id: "g-ct-3", issue_date: "2025-03-10", expiry_date: thirtyDays, next_refresh_date: null, image_url: null, notes: null, created_at: now, updated_at: now },
-    { id: "g-cert-5", employee_id: "g-emp-4", cert_type_id: "g-ct-2", issue_date: "2025-09-01", expiry_date: sixtyDays, next_refresh_date: null, image_url: null, notes: null, created_at: now, updated_at: now },
+    { id: "g-cert-1", employee_id: "g-emp-1", cert_type_id: "g-ct-1", issue_date: "2025-06-01", expiry_date: sixtyDays, next_refresh_date: null, image_url: null, image_filename: null, notes: null, created_at: now, updated_at: now },
+    { id: "g-cert-2", employee_id: "g-emp-1", cert_type_id: "g-ct-2", issue_date: "2025-01-15", expiry_date: tenDaysAgo, next_refresh_date: null, image_url: null, image_filename: null, notes: null, created_at: now, updated_at: now },
+    { id: "g-cert-3", employee_id: "g-emp-2", cert_type_id: "g-ct-1", issue_date: "2025-08-01", expiry_date: fiveDays, next_refresh_date: null, image_url: null, image_filename: null, notes: null, created_at: now, updated_at: now },
+    { id: "g-cert-4", employee_id: "g-emp-3", cert_type_id: "g-ct-3", issue_date: "2025-03-10", expiry_date: thirtyDays, next_refresh_date: null, image_url: null, image_filename: null, notes: null, created_at: now, updated_at: now },
+    { id: "g-cert-5", employee_id: "g-emp-4", cert_type_id: "g-ct-2", issue_date: "2025-09-01", expiry_date: sixtyDays, next_refresh_date: null, image_url: null, image_filename: null, notes: null, created_at: now, updated_at: now },
   ];
 
   return { employees, certTypes, certifications };
