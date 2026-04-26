@@ -114,8 +114,7 @@ describe("deleteTasks", () => {
     const result = await deleteTasks(["t1", "t2", "t3"]);
 
     expect(result.deleted).toBe(2);
-    expect(result.errors).toHaveLength(1);
-    expect(result.errors[0]).toContain("t2");
+    expect(result.errors).toEqual(["t2: שגיאה במחיקה"]);
   });
 
   it("returns zero deleted on empty array without hitting Supabase", async () => {
