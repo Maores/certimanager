@@ -268,7 +268,7 @@ export function CandidatesTable({ candidates }: CandidatesTableProps) {
                 <td className="px-3 py-2.5 font-medium text-gray-900">
                   {c.first_name} {c.last_name}
                 </td>
-                <td className="px-3 py-2.5 text-gray-600" dir="ltr">
+                <td className="px-3 py-2.5 text-right text-gray-600" dir="ltr">
                   {c.id_number}
                 </td>
                 <td className="hidden px-3 py-2.5 text-gray-600 md:table-cell" dir="ltr">

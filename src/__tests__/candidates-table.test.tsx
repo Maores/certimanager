@@ -148,6 +148,14 @@ describe("CandidatesTable — error handling", () => {
   });
 });
 
+describe("CandidatesTable — RTL column alignment", () => {
+  it("right-aligns the ת.ז value cell so it lines up with the right-aligned column header", () => {
+    render(<CandidatesTable candidates={[makeCandidate({ id_number: "111222333" })]} />);
+    const cell = screen.getByRole("cell", { name: "111222333" });
+    expect(cell.className.split(/\s+/)).toContain("text-right");
+  });
+});
+
 describe("CandidatesTable — bulk delete", () => {
   beforeEach(() => {
     vi.clearAllMocks();
