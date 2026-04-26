@@ -80,8 +80,12 @@ export function CertificationsList({ certs, isGuest }: CertificationsListProps) 
     setSuccess(null);
     try {
       const result = await deleteCertifications(deleteDialog.ids);
+      const headline =
+        result.deleted === 1
+          ? "נמחקה הסמכה אחת"
+          : `נמחקו ${result.deleted} הסמכות`;
       if (result.errors.length > 0) {
-        setError(`נמחקו ${result.deleted}. שגיאות: ${result.errors.join(", ")}`);
+        setError(`${headline}. שגיאות: ${result.errors.join(", ")}`);
         // Per spec: failing rows remain selected so the user can retry.
         // Errors format is "${id}: message" — recover the failed ids by splitting on the first ":".
         const failedIds = new Set(
@@ -89,7 +93,7 @@ export function CertificationsList({ certs, isGuest }: CertificationsListProps) 
         );
         setSelected(failedIds);
       } else {
-        setSuccess(`נמחקו ${result.deleted} הסמכות`);
+        setSuccess(headline);
         setSelected(new Set());
       }
       setDeleteDialog({ open: false, ids: [], names: [] });

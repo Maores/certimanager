@@ -269,7 +269,7 @@ describe("CertificationsList — bulk delete flow", () => {
 
     await waitFor(() => {
       const alert = screen.getByRole("alert");
-      expect(alert).toHaveTextContent(/נמחקו 1/);
+      expect(alert).toHaveTextContent(/נמחקה הסמכה אחת/);
       expect(alert).toHaveTextContent(/permission denied/);
     });
 
