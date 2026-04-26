@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition, useState } from "react";
+import { useTransition, useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   ClipboardList,
@@ -11,8 +11,9 @@ import {
   Clock,
   CheckCircle2,
 } from "lucide-react";
-import { createTask, updateTaskStatus, deleteTask } from "./actions";
+import { createTask, updateTaskStatus, deleteTask, deleteTasks } from "./actions";
 import { AutoSubmitSelect } from "@/components/ui/auto-submit-select";
+import { DeleteDialog } from "@/components/ui/delete-dialog";
 
 interface Task {
   id: string;
@@ -61,7 +62,7 @@ const statusConfig: Record<
 };
 
 function formatDate(dateString: string): string {
-  if (!dateString) return "\u2014";
+  if (!dateString) return "—";
   const parts = dateString.split("T")[0].split("-");
   if (parts.length === 3) {
     const [y, m, d] = parts.map(Number);
@@ -83,6 +84,11 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+function taskLabel(t: Pick<Task, "employee_name" | "description">): string {
+  const desc = t.description.length > 40 ? `${t.description.slice(0, 40)}…` : t.description;
+  return `${t.employee_name} — ${desc}`;
+}
+
 export function TasksClient({
   tasks,
   employees,
@@ -95,6 +101,76 @@ export function TasksClient({
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+
+  const [success, setSuccess] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    ids: string[];
+    names: string[];
+  }>({ open: false, ids: [], names: [] });
+
+  useEffect(() => {
+    if (!success) return;
+    const t = setTimeout(() => setSuccess(null), 7000);
+    return () => clearTimeout(t);
+  }, [success]);
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleAll = useCallback(() => {
+    setSelected((prev) => {
+      if (prev.size === tasks.length) return new Set();
+      return new Set(tasks.map((t) => t.id));
+    });
+  }, [tasks]);
+
+  function handleBulkDelete() {
+    const ids = Array.from(selected);
+    const names = ids.map((id) => {
+      const t = tasks.find((tt) => tt.id === id);
+      return t ? taskLabel(t) : id;
+    });
+    setDeleteDialog({ open: true, ids, names });
+  }
+
+  async function handleConfirmDelete() {
+    setError(null);
+    setSuccess(null);
+    try {
+      const result = await deleteTasks(deleteDialog.ids);
+      const headline =
+        result.deleted === 1
+          ? "נמחקה משימה אחת"
+          : `נמחקו ${result.deleted} משימות`;
+      if (result.errors.length > 0) {
+        setError(`${headline}. שגיאות: ${result.errors.join(", ")}`);
+        // Per spec: failing rows remain selected so the user can retry.
+        // Errors format is "${id}: message" — recover the failed ids by splitting on the first ":".
+        const failedIds = new Set(
+          result.errors.map((e) => e.slice(0, e.indexOf(":")).trim())
+        );
+        setSelected(failedIds);
+      } else {
+        setSuccess(headline);
+        setSelected(new Set());
+      }
+      setDeleteDialog({ open: false, ids: [], names: [] });
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "שגיאה במחיקה");
+      // On thrown error (network/auth), nothing was reliably deleted — preserve
+      // selection so the user can retry with one click after dismissing the banner.
+      setDeleteDialog({ open: false, ids: [], names: [] });
+    }
+  }
 
   function handleStatusChange(taskId: string, newStatus: string) {
     setError(null);
@@ -185,6 +261,37 @@ export function TasksClient({
       {error && (
         <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
           {error}
+        </div>
+      )}
+
+      {success && (
+        <div
+          role="status"
+          className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 flex items-center justify-between gap-3"
+        >
+          <span>{success}</span>
+          <button
+            type="button"
+            onClick={() => setSuccess(null)}
+            aria-label="סגור"
+            className="rounded p-0.5 text-green-600 hover:bg-green-100 cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {selected.size > 0 && (
+        <div className="flex items-center gap-3 rounded-lg bg-blue-50 px-4 py-2.5 text-sm">
+          <span className="font-medium text-blue-800">{selected.size} נבחרו</span>
+          <button
+            type="button"
+            onClick={handleBulkDelete}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-danger px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 transition-colors cursor-pointer"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            מחק נבחרים
+          </button>
         </div>
       )}
 
@@ -299,13 +406,24 @@ export function TasksClient({
       ) : (
         <>
           {/* Desktop table */}
-          <div className="hidden sm:block overflow-x-auto rounded-lg border border-border bg-white"
+          <div
+            data-testid="tasks-desktop"
+            className="hidden sm:block overflow-x-auto rounded-lg border border-border bg-white"
             style={{ boxShadow: "var(--shadow-sm)" }}
           >
             <table className="w-full text-sm">
               <caption className="sr-only">רשימת משימות</caption>
               <thead>
                 <tr className="border-b border-border bg-gray-50/50">
+                  <th scope="col" className="w-10 px-3 py-3">
+                    <input
+                      type="checkbox"
+                      aria-label="בחר הכל"
+                      checked={tasks.length > 0 && selected.size === tasks.length}
+                      onChange={toggleAll}
+                      className="h-4 w-4 rounded border-gray-300 cursor-pointer accent-primary"
+                    />
+                  </th>
                   <th scope="col" className="px-4 py-3 text-right font-medium text-muted-foreground">
                     עובד
                   </th>
@@ -332,6 +450,15 @@ export function TasksClient({
                     key={task.id}
                     className="border-b border-border last:border-0 hover:bg-gray-50/50 transition-colors"
                   >
+                    <td className="w-10 px-3 py-3">
+                      <input
+                        type="checkbox"
+                        aria-label={`בחר ${taskLabel(task)}`}
+                        checked={selected.has(task.id)}
+                        onChange={() => toggleSelect(task.id)}
+                        className="h-4 w-4 rounded border-gray-300 cursor-pointer accent-primary"
+                      />
+                    </td>
                     <td className="px-4 py-3 font-medium text-foreground whitespace-nowrap">
                       {task.employee_name}
                     </td>
@@ -339,7 +466,7 @@ export function TasksClient({
                       <span className="line-clamp-2">{task.description}</span>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
-                      {task.responsible || "\u2014"}
+                      {task.responsible || "—"}
                     </td>
                     <td className="px-4 py-3">
                       <select
@@ -376,7 +503,7 @@ export function TasksClient({
           </div>
 
           {/* Mobile cards */}
-          <div className="sm:hidden space-y-3">
+          <div data-testid="tasks-mobile" className="sm:hidden space-y-3">
             {tasks.map((task) => (
               <div
                 key={task.id}
@@ -384,13 +511,24 @@ export function TasksClient({
                 style={{ boxShadow: "var(--shadow-sm)" }}
               >
                 <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-foreground text-sm">
-                      {task.employee_name}
-                    </p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {task.description}
-                    </p>
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <label className="inline-flex h-11 w-11 -m-2 p-2 items-center justify-center cursor-pointer touch-manipulation">
+                      <input
+                        type="checkbox"
+                        aria-label={`בחר ${taskLabel(task)}`}
+                        checked={selected.has(task.id)}
+                        onChange={() => toggleSelect(task.id)}
+                        className="h-5 w-5 rounded border-gray-300 cursor-pointer accent-primary"
+                      />
+                    </label>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground text-sm">
+                        {task.employee_name}
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {task.description}
+                      </p>
+                    </div>
                   </div>
                   <button
                     onClick={() => handleDelete(task.id)}
@@ -429,6 +567,15 @@ export function TasksClient({
           </div>
         </>
       )}
+
+      <DeleteDialog
+        open={deleteDialog.open}
+        itemNames={deleteDialog.names}
+        noun="משימה"
+        nounPlural="משימות"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeleteDialog({ open: false, ids: [], names: [] })}
+      />
     </div>
   );
 }

@@ -7,8 +7,7 @@ import { Trash2, Paperclip, FileText, Image as ImageIcon } from "lucide-react";
 import { deleteCertification, deleteCertifications } from "@/app/dashboard/certifications/actions";
 import { DeleteButton } from "@/components/ui/delete-button";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
-import type { CertStatus } from "@/types/database";
-import { formatDateHe } from "@/types/database";
+import { formatDateHe, type CertStatus, type CertRow } from "@/types/database";
 
 const statusConfig: Record<
   CertStatus,
@@ -24,19 +23,6 @@ const statusConfig: Record<
   },
   expired: { label: "פג תוקף", bg: "bg-red-50", text: "text-red-700", dot: "bg-red-500" },
 };
-
-export interface CertRow {
-  id: string;
-  employee_name: string;
-  employee_department: string;
-  cert_type_id: string;
-  cert_type_name: string;
-  issue_date: string | null;
-  expiry_date: string | null;
-  next_refresh_date: string | null;
-  image_url: string | null;
-  status: CertStatus;
-}
 
 function certLabel(c: Pick<CertRow, "employee_name" | "cert_type_name">): string {
   return `${c.employee_name} — ${c.cert_type_name}`;
@@ -94,8 +80,12 @@ export function CertificationsList({ certs, isGuest }: CertificationsListProps) 
     setSuccess(null);
     try {
       const result = await deleteCertifications(deleteDialog.ids);
+      const headline =
+        result.deleted === 1
+          ? "נמחקה הסמכה אחת"
+          : `נמחקו ${result.deleted} הסמכות`;
       if (result.errors.length > 0) {
-        setError(`נמחקו ${result.deleted}. שגיאות: ${result.errors.join(", ")}`);
+        setError(`${headline}. שגיאות: ${result.errors.join(", ")}`);
         // Per spec: failing rows remain selected so the user can retry.
         // Errors format is "${id}: message" — recover the failed ids by splitting on the first ":".
         const failedIds = new Set(
@@ -103,7 +93,7 @@ export function CertificationsList({ certs, isGuest }: CertificationsListProps) 
         );
         setSelected(failedIds);
       } else {
-        setSuccess(`נמחקו ${result.deleted} הסמכות`);
+        setSuccess(headline);
         setSelected(new Set());
       }
       setDeleteDialog({ open: false, ids: [], names: [] });

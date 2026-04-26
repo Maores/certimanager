@@ -132,3 +132,16 @@ export function daysUntilExpiry(expiryDate: string | null): number | null {
   now.setHours(0, 0, 0, 0); // local midnight
   return Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 }
+
+export interface CertRow {
+  id: string;
+  employee_name: string;
+  employee_department: string;
+  cert_type_id: string;
+  cert_type_name: string;
+  issue_date: string | null;
+  expiry_date: string | null;
+  next_refresh_date: string | null;
+  image_url: string | null;
+  status: CertStatus;
+}

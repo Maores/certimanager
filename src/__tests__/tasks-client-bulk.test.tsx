@@ -1,55 +1,73 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent, within } from "@testing-library/react";
-import type { CertRow } from "@/types/database";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
 }));
 
-const deleteCertifications = vi.fn();
-vi.mock("@/app/dashboard/certifications/actions", () => ({
-  deleteCertifications: (...args: unknown[]) => deleteCertifications(...args),
-  deleteCertification: vi.fn(),
+const deleteTasks = vi.fn();
+const updateTaskStatus = vi.fn();
+const deleteTask = vi.fn();
+const createTask = vi.fn();
+vi.mock("@/app/dashboard/tasks/actions", () => ({
+  deleteTasks: (...args: unknown[]) => deleteTasks(...args),
+  updateTaskStatus: (...args: unknown[]) => updateTaskStatus(...args),
+  deleteTask: (...args: unknown[]) => deleteTask(...args),
+  createTask: (...args: unknown[]) => createTask(...args),
 }));
 
-// Import after mocks
-import { CertificationsList } from "@/components/certifications/certifications-list";
+import { TasksClient } from "@/app/dashboard/tasks/tasks-client";
 
-function makeCert(overrides: Partial<CertRow> = {}): CertRow {
+type Task = {
+  id: string;
+  employee_id: string;
+  description: string;
+  responsible: string | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  employee_name: string;
+};
+
+function makeTask(overrides: Partial<Task> = {}): Task {
   return {
-    id: "cert-1",
+    id: "task-1",
+    employee_id: "emp-1",
+    description: "החלף שמן",
+    responsible: null,
+    status: "פתוח",
+    created_at: "2026-04-20T08:00:00Z",
+    updated_at: "2026-04-20T08:00:00Z",
     employee_name: "דנה כהן",
-    employee_department: "נת״ע",
-    cert_type_id: "ct-1",
-    cert_type_name: "נהיגה",
-    issue_date: "2025-01-01",
-    expiry_date: "2027-01-01",
-    next_refresh_date: null,
-    image_url: null,
-    status: "valid",
     ...overrides,
   };
 }
 
-// Helper: scope queries to the desktop table only.
-// In jsdom, both the desktop table and the mobile card list render (Tailwind's
-// `hidden md:block` / `md:hidden` are CSS-only and jsdom does not evaluate the
-// media query), so per-row labels appear twice. We assert against the desktop
-// view; browser verification (Task 5) covers mobile visually.
+const baseProps = {
+  employees: [{ id: "emp-1", name: "דנה כהן" }],
+  responsibleList: [],
+  counts: { "פתוח": 0, "בטיפול": 0, "הושלם": 0 },
+  statusFilter: "",
+  responsibleFilter: "",
+};
+
+// jsdom renders both desktop and mobile views regardless of the Tailwind
+// breakpoint (CSS-only), so per-row checkboxes appear twice. Scope queries
+// to the desktop view; browser verification (Task 8) covers mobile visually.
 function desktop() {
-  return within(screen.getByTestId("certs-desktop"));
+  return within(screen.getByTestId("tasks-desktop"));
 }
 
-describe("CertificationsList — selection UI", () => {
+describe("TasksClient — selection UI", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("renders a checkbox for each row and a select-all in the table header", () => {
     render(
-      <CertificationsList
-        isGuest={false}
-        certs={[
-          makeCert({ id: "a", employee_name: "דנה כהן" }),
-          makeCert({ id: "b", employee_name: "יוסי לוי" }),
+      <TasksClient
+        {...baseProps}
+        tasks={[
+          makeTask({ id: "a", employee_name: "דנה כהן" }),
+          makeTask({ id: "b", employee_name: "יוסי לוי" }),
         ]}
       />
     );
@@ -60,7 +78,6 @@ describe("CertificationsList — selection UI", () => {
     expect(
       desktop().getByRole("checkbox", { name: /בחר .*יוסי לוי/ })
     ).toBeInTheDocument();
-    // Select-all exists once (desktop table only)
     expect(
       desktop().getByRole("checkbox", { name: /בחר הכל/ })
     ).toBeInTheDocument();
@@ -68,18 +85,17 @@ describe("CertificationsList — selection UI", () => {
 
   it("select-all toggles all rows", () => {
     render(
-      <CertificationsList
-        isGuest={false}
-        certs={[
-          makeCert({ id: "a", employee_name: "דנה כהן" }),
-          makeCert({ id: "b", employee_name: "יוסי לוי" }),
+      <TasksClient
+        {...baseProps}
+        tasks={[
+          makeTask({ id: "a", employee_name: "דנה כהן" }),
+          makeTask({ id: "b", employee_name: "יוסי לוי" }),
         ]}
       />
     );
 
     const selectAll = desktop().getByRole("checkbox", { name: /בחר הכל/ });
     fireEvent.click(selectAll);
-
     expect(
       desktop().getByRole("checkbox", { name: /בחר .*דנה כהן/ })
     ).toBeChecked();
@@ -88,7 +104,6 @@ describe("CertificationsList — selection UI", () => {
     ).toBeChecked();
 
     fireEvent.click(selectAll);
-
     expect(
       desktop().getByRole("checkbox", { name: /בחר .*דנה כהן/ })
     ).not.toBeChecked();
@@ -98,12 +113,7 @@ describe("CertificationsList — selection UI", () => {
   });
 
   it("hides the bulk action bar when nothing is selected", () => {
-    render(
-      <CertificationsList
-        isGuest={false}
-        certs={[makeCert()]}
-      />
-    );
+    render(<TasksClient {...baseProps} tasks={[makeTask()]} />);
     expect(
       screen.queryByRole("button", { name: /מחק נבחרים/ })
     ).not.toBeInTheDocument();
@@ -111,11 +121,11 @@ describe("CertificationsList — selection UI", () => {
 
   it("shows the bulk action bar with count when at least one row is selected", () => {
     render(
-      <CertificationsList
-        isGuest={false}
-        certs={[
-          makeCert({ id: "a", employee_name: "דנה כהן" }),
-          makeCert({ id: "b", employee_name: "יוסי לוי" }),
+      <TasksClient
+        {...baseProps}
+        tasks={[
+          makeTask({ id: "a", employee_name: "דנה כהן" }),
+          makeTask({ id: "b", employee_name: "יוסי לוי" }),
         ]}
       />
     );
@@ -132,40 +142,18 @@ describe("CertificationsList — selection UI", () => {
       screen.getByRole("button", { name: /מחק נבחרים/ })
     ).toBeInTheDocument();
   });
-
-  it("hides all selection UI in guest mode", () => {
-    render(
-      <CertificationsList
-        isGuest={true}
-        certs={[makeCert()]}
-      />
-    );
-    // No select-all, no per-row checkboxes anywhere
-    expect(
-      screen.queryByRole("checkbox", { name: /בחר הכל/ })
-    ).not.toBeInTheDocument();
-    expect(screen.queryAllByRole("checkbox", { name: /בחר/ })).toHaveLength(0);
-  });
 });
 
-describe("CertificationsList — bulk delete flow", () => {
+describe("TasksClient — bulk delete flow", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("clicking 'מחק נבחרים' opens the dialog with selected names listed", async () => {
     render(
-      <CertificationsList
-        isGuest={false}
-        certs={[
-          makeCert({
-            id: "a",
-            employee_name: "דנה כהן",
-            cert_type_name: "נהיגה",
-          }),
-          makeCert({
-            id: "b",
-            employee_name: "יוסי לוי",
-            cert_type_name: "ריתוך",
-          }),
+      <TasksClient
+        {...baseProps}
+        tasks={[
+          makeTask({ id: "a", employee_name: "דנה כהן", description: "החלף שמן" }),
+          makeTask({ id: "b", employee_name: "יוסי לוי", description: "ביטוח רכב" }),
         ]}
       />
     );
@@ -179,21 +167,21 @@ describe("CertificationsList — bulk delete flow", () => {
     fireEvent.click(screen.getByRole("button", { name: /מחק נבחרים/ }));
 
     const dialog = await screen.findByRole("dialog", {
-      name: /מחיקת 2 הסמכות/,
+      name: /מחיקת 2 משימות/,
     });
-    expect(within(dialog).getByText(/דנה כהן.*נהיגה/)).toBeInTheDocument();
-    expect(within(dialog).getByText(/יוסי לוי.*ריתוך/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/דנה כהן.*החלף שמן/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/יוסי לוי.*ביטוח רכב/)).toBeInTheDocument();
   });
 
-  it("confirm calls deleteCertifications with selected ids and shows success", async () => {
-    deleteCertifications.mockResolvedValue({ deleted: 2, errors: [] });
+  it("confirm calls deleteTasks with selected ids and shows success", async () => {
+    deleteTasks.mockResolvedValue({ deleted: 2, errors: [] });
 
     render(
-      <CertificationsList
-        isGuest={false}
-        certs={[
-          makeCert({ id: "a", employee_name: "דנה כהן" }),
-          makeCert({ id: "b", employee_name: "יוסי לוי" }),
+      <TasksClient
+        {...baseProps}
+        tasks={[
+          makeTask({ id: "a", employee_name: "דנה כהן" }),
+          makeTask({ id: "b", employee_name: "יוסי לוי" }),
         ]}
       />
     );
@@ -208,20 +196,18 @@ describe("CertificationsList — bulk delete flow", () => {
     fireEvent.click(await screen.findByRole("button", { name: /^מחק$/ }));
 
     await waitFor(() => {
-      expect(deleteCertifications).toHaveBeenCalledWith(["a", "b"]);
+      expect(deleteTasks).toHaveBeenCalledWith(["a", "b"]);
     });
     await waitFor(() => {
-      expect(screen.getByRole("status")).toHaveTextContent(/נמחקו 2 הסמכות/);
+      expect(screen.getByRole("status")).toHaveTextContent(/נמחקו 2 משימות/);
     });
   });
 
-  it("cancel closes the dialog without calling the server action", async () => {
+  it("cancel closes the dialog without calling deleteTasks; selection preserved", async () => {
     render(
-      <CertificationsList
-        isGuest={false}
-        certs={[
-          makeCert({ id: "a", employee_name: "דנה כהן" }),
-        ]}
+      <TasksClient
+        {...baseProps}
+        tasks={[makeTask({ id: "a", employee_name: "דנה כהן" })]}
       />
     );
 
@@ -233,27 +219,27 @@ describe("CertificationsList — bulk delete flow", () => {
 
     await waitFor(() => {
       expect(
-        screen.queryByRole("heading", { name: /מחיקת הסמכה/ })
+        screen.queryByRole("heading", { name: /מחיקת/ })
       ).not.toBeInTheDocument();
     });
-    expect(deleteCertifications).not.toHaveBeenCalled();
+    expect(deleteTasks).not.toHaveBeenCalled();
     expect(
       desktop().getByRole("checkbox", { name: /בחר .*דנה כהן/ })
     ).toBeChecked();
   });
 
   it("partial failure surfaces an error banner AND keeps failed rows selected for retry", async () => {
-    deleteCertifications.mockResolvedValue({
+    deleteTasks.mockResolvedValue({
       deleted: 1,
-      errors: ["b: permission denied"],
+      errors: ["b: שגיאה במחיקה"],
     });
 
     render(
-      <CertificationsList
-        isGuest={false}
-        certs={[
-          makeCert({ id: "a", employee_name: "דנה כהן" }),
-          makeCert({ id: "b", employee_name: "יוסי לוי" }),
+      <TasksClient
+        {...baseProps}
+        tasks={[
+          makeTask({ id: "a", employee_name: "דנה כהן" }),
+          makeTask({ id: "b", employee_name: "יוסי לוי" }),
         ]}
       />
     );
@@ -269,13 +255,10 @@ describe("CertificationsList — bulk delete flow", () => {
 
     await waitFor(() => {
       const alert = screen.getByRole("alert");
-      expect(alert).toHaveTextContent(/נמחקה הסמכה אחת/);
-      expect(alert).toHaveTextContent(/permission denied/);
+      expect(alert).toHaveTextContent(/נמחקה משימה אחת/);
+      expect(alert).toHaveTextContent(/שגיאה במחיקה/);
     });
 
-    // Per spec: failing rows stay selected so the user can retry.
-    // The successful row "a" is no longer checked (router.refresh would remove it),
-    // but "b" (the failure) should remain checked in the component state.
     expect(
       desktop().getByRole("checkbox", { name: /בחר .*יוסי לוי/ })
     ).toBeChecked();
@@ -285,14 +268,14 @@ describe("CertificationsList — bulk delete flow", () => {
   });
 
   it("thrown error preserves selection and shows the error banner", async () => {
-    deleteCertifications.mockRejectedValue(new Error("network boom"));
+    deleteTasks.mockRejectedValue(new Error("network boom"));
 
     render(
-      <CertificationsList
-        isGuest={false}
-        certs={[
-          makeCert({ id: "a", employee_name: "דנה כהן" }),
-          makeCert({ id: "b", employee_name: "יוסי לוי" }),
+      <TasksClient
+        {...baseProps}
+        tasks={[
+          makeTask({ id: "a", employee_name: "דנה כהן" }),
+          makeTask({ id: "b", employee_name: "יוסי לוי" }),
         ]}
       />
     );
@@ -309,7 +292,6 @@ describe("CertificationsList — bulk delete flow", () => {
     await waitFor(() => {
       expect(screen.getByRole("alert")).toHaveTextContent(/network boom/);
     });
-    // Dialog closed; both selections preserved so the user can retry cleanly.
     expect(
       screen.queryByRole("heading", { name: /מחיקת/ })
     ).not.toBeInTheDocument();

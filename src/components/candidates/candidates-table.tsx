@@ -136,10 +136,14 @@ export function CandidatesTable({ candidates }: CandidatesTableProps) {
     setSuccess(null);
     try {
       const result = await deleteCandidates(deleteDialog.ids);
+      const headline =
+        result.deleted === 1
+          ? "נמחק מועמד אחד"
+          : `נמחקו ${result.deleted} מועמדים`;
       if (result.errors.length > 0) {
-        setError(`נמחקו ${result.deleted} מועמדים. שגיאות: ${result.errors.join(", ")}`);
+        setError(`${headline}. שגיאות: ${result.errors.join(", ")}`);
       } else {
-        setSuccess(`מחקו ${result.deleted} מועמדים`);
+        setSuccess(headline);
       }
       setDeleteDialog({ open: false, ids: [], names: [] });
       setSelected(new Set());

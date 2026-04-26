@@ -217,7 +217,7 @@ describe("CandidatesTable — bulk delete", () => {
       expect(deleteCandidates).toHaveBeenCalledWith(["c1", "c2"]);
     });
     await waitFor(() => {
-      expect(screen.getByRole("status")).toHaveTextContent(/מחקו 2 מועמדים/);
+      expect(screen.getByRole("status")).toHaveTextContent(/נמחקו 2 מועמדים/);
     });
   });
 });
