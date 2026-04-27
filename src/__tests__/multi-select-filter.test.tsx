@@ -144,28 +144,36 @@ describe("MultiSelectFilter — dropdown + selection", () => {
   });
 });
 
-describe("MultiSelectFilter — auto-submit on close", () => {
+describe("MultiSelectFilter — auto-submit on every tick", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("submits the form when the dropdown closes after a selection change", async () => {
+  it("submits the form immediately when a checkbox is toggled (so the list filters instantly)", async () => {
     const { submitSpy } = renderInsideForm([]);
     fireEvent.click(
       screen.getByRole("button", { name: /סינון לפי סוג הסמכה/ })
     );
     fireEvent.click(screen.getByRole("checkbox", { name: "ריתוך" }));
-    // Close by clicking the trigger again
-    fireEvent.click(
-      screen.getByRole("button", { name: /סינון לפי סוג הסמכה/ })
-    );
 
     await waitFor(() => {
       expect(submitSpy).toHaveBeenCalledTimes(1);
     });
   });
 
-  it("does NOT submit when the dropdown closes without any change", async () => {
+  it("submits again on every subsequent toggle", async () => {
+    const { submitSpy } = renderInsideForm([]);
+    fireEvent.click(
+      screen.getByRole("button", { name: /סינון לפי סוג הסמכה/ })
+    );
+    fireEvent.click(screen.getByRole("checkbox", { name: "ריתוך" }));
+    await waitFor(() => expect(submitSpy).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "נהיגה" }));
+    await waitFor(() => expect(submitSpy).toHaveBeenCalledTimes(2));
+  });
+
+  it("does NOT submit when the dropdown is opened/closed without a selection change", async () => {
     const { submitSpy } = renderInsideForm(["ct-1"]);
     fireEvent.click(
       screen.getByRole("button", { name: /סינון לפי סוג הסמכה/ })
