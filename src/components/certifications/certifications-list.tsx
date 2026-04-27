@@ -4,7 +4,11 @@ import Link from "next/link";
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2, Paperclip, FileText, Image as ImageIcon } from "lucide-react";
-import { deleteCertification, deleteCertifications } from "@/app/dashboard/certifications/actions";
+import {
+  deleteCertification,
+  deleteCertifications,
+  getSignedUrl,
+} from "@/app/dashboard/certifications/actions";
 import { DeleteButton } from "@/components/ui/delete-button";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { formatDateHe, type CertStatus, type CertRow } from "@/types/database";
@@ -108,6 +112,20 @@ export function CertificationsList({ certs, isGuest }: CertificationsListProps) 
 
   const showBulkUI = !isGuest;
 
+  async function handleOpenFile(imagePath: string) {
+    setError(null);
+    try {
+      const url = await getSignedUrl(imagePath);
+      if (!url) {
+        setError("לא ניתן לפתוח את הקובץ. ייתכן שאין לך הרשאה.");
+        return;
+      }
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch {
+      setError("שגיאה בפתיחת הקובץ");
+    }
+  }
+
   return (
     <>
       {error && (
@@ -203,14 +221,21 @@ export function CertificationsList({ certs, isGuest }: CertificationsListProps) 
                   <td className="px-6 py-4 text-sm" style={{ color: "#64748b" }}>{cert.cert_type_name}</td>
                   <td className="px-6 py-4">
                     {cert.image_url ? (
-                      <span className="inline-flex items-center gap-1.5 text-xs bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full font-medium">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenFile(cert.image_url!)}
+                        title={cert.image_filename || "פתח קובץ"}
+                        aria-label={`פתח קובץ ${cert.image_filename || "המצורף"} של ${certLabel(cert)}`}
+                        dir="auto"
+                        className="inline-flex max-w-[14rem] items-center gap-1.5 truncate text-xs bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full font-medium hover:bg-emerald-100 hover:underline transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                      >
                         {cert.image_url.endsWith(".pdf") ? (
-                          <FileText className="h-3.5 w-3.5" />
+                          <FileText className="h-3.5 w-3.5 shrink-0" />
                         ) : (
-                          <ImageIcon className="h-3.5 w-3.5" />
+                          <ImageIcon className="h-3.5 w-3.5 shrink-0" />
                         )}
-                        מצורף
-                      </span>
+                        <span className="truncate">{cert.image_filename || "קובץ"}</span>
+                      </button>
                     ) : (
                       <span className="text-xs" style={{ color: "#94a3b8" }}>—</span>
                     )}
@@ -306,10 +331,17 @@ export function CertificationsList({ certs, isGuest }: CertificationsListProps) 
               </div>
 
               {cert.image_url && (
-                <div className="flex items-center gap-1.5 text-xs text-emerald-700">
-                  <Paperclip className="h-3.5 w-3.5" />
-                  קובץ מצורף
-                </div>
+                <button
+                  type="button"
+                  onClick={() => handleOpenFile(cert.image_url!)}
+                  title={cert.image_filename || "פתח קובץ"}
+                  aria-label={`פתח קובץ ${cert.image_filename || "המצורף"} של ${certLabel(cert)}`}
+                  dir="auto"
+                  className="inline-flex min-h-[44px] max-w-full items-center gap-1.5 text-xs text-emerald-700 hover:underline cursor-pointer touch-manipulation focus:outline-none focus:ring-2 focus:ring-emerald-500/40 rounded"
+                >
+                  <Paperclip className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{cert.image_filename || "קובץ מצורף"}</span>
+                </button>
               )}
 
               <div className="flex items-center gap-3 pt-3" style={{ borderTop: "1px solid #f1f5f9" }}>

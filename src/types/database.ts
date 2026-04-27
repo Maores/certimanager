@@ -37,6 +37,7 @@ export interface Certification {
   expiry_date: string | null;
   next_refresh_date: string | null;
   image_url: string | null;
+  image_filename: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -143,5 +144,6 @@ export interface CertRow {
   expiry_date: string | null;
   next_refresh_date: string | null;
   image_url: string | null;
+  image_filename: string | null;
   status: CertStatus;
 }

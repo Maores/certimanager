@@ -66,6 +66,7 @@ export default async function CertificationsPage({
         expiry_date,
         next_refresh_date,
         image_url,
+        image_filename,
         notes,
         created_at,
         updated_at,
@@ -103,6 +104,7 @@ export default async function CertificationsPage({
     expiry_date: cert.expiry_date,
     next_refresh_date: cert.next_refresh_date,
     image_url: cert.image_url,
+    image_filename: cert.image_filename ?? null,
     status: getCertStatus(cert.expiry_date, cert.next_refresh_date),
   }));
 
