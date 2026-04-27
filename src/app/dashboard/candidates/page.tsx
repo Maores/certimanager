@@ -4,7 +4,7 @@ import type { CourseCandidate } from "@/types/database";
 import { CANDIDATE_STATUSES } from "@/types/database";
 import { Search, UserPlus, Upload, GraduationCap } from "lucide-react";
 import { CandidatesTable } from "@/components/candidates/candidates-table";
-import { AutoSubmitSelect } from "@/components/ui/auto-submit-select";
+import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 
 const PAGE_SIZE = 25;
 
@@ -15,6 +15,10 @@ export default async function CandidatesPage({
 }) {
   const { q, cert_type, status: statusFilter, page: pageParam } = await searchParams;
   const page = Math.max(1, parseInt(pageParam || "1", 10) || 1);
+  // cert_type=A,B,C and status=ממתין,נרשם — comma-separated lists. Single-value
+  // links (?cert_type=A) remain valid for backward compat with old bookmarks.
+  const certTypeFilters = (cert_type || "").split(",").filter(Boolean);
+  const statusFilters = (statusFilter || "").split(",").filter(Boolean);
 
   const { user, supabase } = await requireUser();
 
@@ -40,12 +44,12 @@ export default async function CandidatesPage({
     );
   }
 
-  if (cert_type) {
-    query = query.eq("cert_type_id", cert_type);
+  if (certTypeFilters.length > 0) {
+    query = query.in("cert_type_id", certTypeFilters);
   }
 
-  if (statusFilter) {
-    query = query.eq("status", statusFilter);
+  if (statusFilters.length > 0) {
+    query = query.in("status", statusFilters);
   }
 
   // Count query
@@ -60,8 +64,8 @@ export default async function CandidatesPage({
       `first_name.ilike.%${safeQ}%,last_name.ilike.%${safeQ}%,id_number.ilike.%${safeQ}%`
     );
   }
-  if (cert_type) countQuery = countQuery.eq("cert_type_id", cert_type);
-  if (statusFilter) countQuery = countQuery.eq("status", statusFilter);
+  if (certTypeFilters.length > 0) countQuery = countQuery.in("cert_type_id", certTypeFilters);
+  if (statusFilters.length > 0) countQuery = countQuery.in("status", statusFilters);
   const { count } = await countQuery;
   const totalPages = Math.ceil((count || 0) / PAGE_SIZE);
 
@@ -153,30 +157,22 @@ export default async function CandidatesPage({
             <Search className="h-5 w-5" />
           </button>
         </div>
-        <AutoSubmitSelect
+        <MultiSelectFilter
           name="cert_type"
-          defaultValue={cert_type ?? ""}
-          aria-label="סינון לפי סוג הסמכה"
-          className="rounded-lg border border-border bg-white px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-ring cursor-pointer sm:w-48"
-        >
-          <option value="">כל ההסמכות</option>
-          {(certTypes || []).map((ct) => (
-            <option key={ct.id} value={ct.id}>
-              {ct.name}
-            </option>
-          ))}
-        </AutoSubmitSelect>
-        <AutoSubmitSelect
+          selected={certTypeFilters}
+          options={(certTypes || []).map((ct) => ({ value: ct.id, label: ct.name }))}
+          placeholder="כל ההסמכות"
+          ariaLabel="סינון לפי סוג הסמכה"
+          className="sm:w-48"
+        />
+        <MultiSelectFilter
           name="status"
-          defaultValue={statusFilter ?? ""}
-          aria-label="סינון לפי סטטוס"
-          className="rounded-lg border border-border bg-white px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-ring cursor-pointer sm:w-48"
-        >
-          <option value="">כל הסטטוסים</option>
-          {CANDIDATE_STATUSES.map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </AutoSubmitSelect>
+          selected={statusFilters}
+          options={CANDIDATE_STATUSES.map((s) => ({ value: s, label: s }))}
+          placeholder="כל הסטטוסים"
+          ariaLabel="סינון לפי סטטוס"
+          className="sm:w-48"
+        />
       </form>
 
       {candidates.length === 0 ? (
