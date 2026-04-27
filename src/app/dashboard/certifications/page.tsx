@@ -5,6 +5,7 @@ import { getCertStatus, type CertStatus, type CertRow } from "@/types/database";
 import Link from "next/link";
 import { Search, Plus } from "lucide-react";
 import { AutoSubmitSelect } from "@/components/ui/auto-submit-select";
+import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { CertificationsList } from "@/components/certifications/certifications-list";
 
 type FilterTab = "all" | CertStatus;
@@ -25,7 +26,10 @@ export default async function CertificationsPage({
   const currentFilter = (params.filter || "all") as FilterTab;
   const searchQuery = params.search || "";
   const deptFilter = params.dept || "";
+  // type=A,B,C — comma-separated list of cert_type_ids. Single-value links
+  // (?type=A) remain valid for backward compat with old bookmarks.
   const typeFilter = params.type || "";
+  const typeFilters = typeFilter.split(",").filter(Boolean);
 
   const guestSid = await getGuestSessionId();
 
@@ -118,7 +122,7 @@ export default async function CertificationsPage({
     const matchesDept =
       !deptFilter || cert.employee_department === deptFilter;
     const matchesType =
-      !typeFilter || cert.cert_type_id === typeFilter;
+      typeFilters.length === 0 || typeFilters.includes(cert.cert_type_id);
     return matchesFilter && matchesSearch && matchesDept && matchesType;
   });
 
@@ -175,17 +179,14 @@ export default async function CertificationsPage({
             <option key={d} value={d}>{d}</option>
           ))}
         </AutoSubmitSelect>
-        <AutoSubmitSelect
+        <MultiSelectFilter
           name="type"
-          defaultValue={typeFilter}
-          aria-label="סינון לפי סוג הסמכה"
-          className="rounded-lg border border-border bg-white px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-ring cursor-pointer sm:w-44"
-        >
-          <option value="">כל סוגי ההסמכה</option>
-          {(certTypes || []).map((ct) => (
-            <option key={ct.id} value={ct.id}>{ct.name}</option>
-          ))}
-        </AutoSubmitSelect>
+          selected={typeFilters}
+          options={(certTypes || []).map((ct) => ({ value: ct.id, label: ct.name }))}
+          placeholder="כל סוגי ההסמכה"
+          ariaLabel="סינון לפי סוג הסמכה"
+          className="sm:w-44"
+        />
       </form>
 
       {/* Filter tabs */}
