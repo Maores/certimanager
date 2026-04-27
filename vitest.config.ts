@@ -6,7 +6,6 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/__tests__/setup.ts"],
-    exclude: ["**/journeys-e2e/**"],
   },
   resolve: {
     alias: {
