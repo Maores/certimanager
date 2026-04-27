@@ -140,15 +140,24 @@ export function MultiSelectFilter({
           aria-multiselectable="true"
           className="absolute z-20 mt-1 w-full max-h-64 overflow-y-auto rounded-lg border border-border bg-white shadow-lg"
         >
-          {selected.size > 0 && (
-            <button
-              type="button"
-              onClick={clearAll}
-              className="w-full text-right px-4 py-2 text-xs text-muted-foreground hover:bg-gray-50 border-b border-border cursor-pointer"
-            >
-              נקה הכל
-            </button>
-          )}
+          {/*
+            Always render the "נקה הכל" slot so the checkbox rows below it
+            don't shift up/down by ~32px every time the selection count
+            crosses 0/1. Disabled-styled when nothing is selected.
+          */}
+          <button
+            type="button"
+            onClick={clearAll}
+            disabled={selected.size === 0}
+            aria-disabled={selected.size === 0}
+            className={`w-full text-right px-4 py-2 text-xs border-b border-border ${
+              selected.size === 0
+                ? "text-muted-foreground/50 cursor-default"
+                : "text-muted-foreground hover:bg-gray-50 cursor-pointer"
+            }`}
+          >
+            נקה הכל
+          </button>
           {options.length === 0 ? (
             <div className="px-4 py-3 text-sm text-muted-foreground">
               אין אפשרויות

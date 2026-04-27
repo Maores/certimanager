@@ -123,6 +123,25 @@ describe("MultiSelectFilter — dropdown + selection", () => {
     // listbox still open
     expect(screen.queryByRole("listbox")).toBeInTheDocument();
   });
+
+  it("renders the 'נקה הכל' slot even when nothing is selected (disabled) so the checkbox rows below don't shift on first/last toggle", () => {
+    renderInsideForm([]);
+    fireEvent.click(
+      screen.getByRole("button", { name: /סינון לפי סוג הסמכה/ })
+    );
+    const clearBtn = screen.getByRole("button", { name: /נקה הכל/ });
+    expect(clearBtn).toBeInTheDocument();
+    expect(clearBtn).toBeDisabled();
+  });
+
+  it("'נקה הכל' becomes enabled once at least one option is selected", () => {
+    renderInsideForm([]);
+    fireEvent.click(
+      screen.getByRole("button", { name: /סינון לפי סוג הסמכה/ })
+    );
+    fireEvent.click(screen.getByRole("checkbox", { name: "נהיגה" }));
+    expect(screen.getByRole("button", { name: /נקה הכל/ })).toBeEnabled();
+  });
 });
 
 describe("MultiSelectFilter — auto-submit on close", () => {
