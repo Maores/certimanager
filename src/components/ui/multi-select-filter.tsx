@@ -119,7 +119,7 @@ export function MultiSelectFilter({
         aria-expanded={open}
         aria-haspopup="listbox"
         aria-label={ariaLabel}
-        className="inline-flex w-full min-h-[44px] items-center justify-between gap-2 rounded-lg border border-border bg-white px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-ring cursor-pointer"
+        className="inline-flex w-full min-h-[44px] select-none items-center justify-between gap-2 rounded-lg border border-border bg-white px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-ring cursor-pointer"
       >
         <span
           className={
@@ -150,7 +150,7 @@ export function MultiSelectFilter({
             onClick={clearAll}
             disabled={selected.size === 0}
             aria-disabled={selected.size === 0}
-            className={`w-full text-right px-4 py-2 text-xs border-b border-border ${
+            className={`w-full select-none text-right px-4 py-2 text-xs border-b border-border ${
               selected.size === 0
                 ? "text-muted-foreground/50 cursor-default"
                 : "text-muted-foreground hover:bg-gray-50 cursor-pointer"
@@ -168,7 +168,7 @@ export function MultiSelectFilter({
               return (
                 <label
                   key={opt.value}
-                  className="flex min-h-[44px] cursor-pointer items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-gray-50"
+                  className="flex min-h-[44px] cursor-pointer select-none items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-gray-50"
                 >
                   <input
                     type="checkbox"
