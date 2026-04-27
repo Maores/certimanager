@@ -28,9 +28,9 @@ interface MultiSelectFilterProps {
  * the selected option values, so the URL contract (`?name=A,B,C`) is backward
  * compatible with single-value links (`?name=A`).
  *
- * Auto-submits the parent form when the dropdown closes IF the selection
- * actually changed since the last submit. Avoids submitting on every checkbox
- * tick (visual jank when the user wants to pick several at once).
+ * Auto-submits the parent form on every checkbox toggle so the filtered list
+ * updates instantly. The form submission causes a page navigation that closes
+ * the dropdown — user re-opens it to pick the next filter.
  */
 export function MultiSelectFilter({
   name,
@@ -71,16 +71,16 @@ export function MultiSelectFilter({
     };
   }, [open]);
 
-  // Auto-submit when dropdown closes IF selection changed since last submit.
+  // Auto-submit on every selection change so the list updates instantly.
+  // The form submission triggers a page nav that re-mounts the component
+  // (and closes the dropdown) — user re-opens to pick the next filter.
   useEffect(() => {
-    if (open) return;
     const current = Array.from(selected).join(",");
-    if (current !== lastSubmittedRef.current) {
-      lastSubmittedRef.current = current;
-      const form = containerRef.current?.closest("form");
-      if (form) form.submit();
-    }
-  }, [open, selected]);
+    if (current === lastSubmittedRef.current) return;
+    lastSubmittedRef.current = current;
+    const form = containerRef.current?.closest("form");
+    if (form) form.submit();
+  }, [selected]);
 
   function toggle(value: string) {
     setSelected((prev) => {

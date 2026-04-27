@@ -4,7 +4,6 @@ import { guestGetCertTypes, guestGetCertifications, getGuestData } from "@/lib/g
 import { getCertStatus, type CertStatus, type CertRow } from "@/types/database";
 import Link from "next/link";
 import { Search, Plus } from "lucide-react";
-import { AutoSubmitSelect } from "@/components/ui/auto-submit-select";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { CertificationsList } from "@/components/certifications/certifications-list";
 
@@ -25,9 +24,10 @@ export default async function CertificationsPage({
   const params = await searchParams;
   const currentFilter = (params.filter || "all") as FilterTab;
   const searchQuery = params.search || "";
+  // type=A,B,C and dept=X,Y — comma-separated lists. Single-value links
+  // (?type=A, ?dept=X) remain valid for backward compat with old bookmarks.
   const deptFilter = params.dept || "";
-  // type=A,B,C — comma-separated list of cert_type_ids. Single-value links
-  // (?type=A) remain valid for backward compat with old bookmarks.
+  const deptFilters = deptFilter.split(",").filter(Boolean);
   const typeFilter = params.type || "";
   const typeFilters = typeFilter.split(",").filter(Boolean);
 
@@ -61,7 +61,7 @@ export default async function CertificationsPage({
       ),
     ] as string[];
 
-    const result = await supabase
+    let dataQuery = supabase
       .from("certifications")
       .select(
         `
@@ -79,8 +79,19 @@ export default async function CertificationsPage({
         cert_types ( id, name )
       `
       )
-      .eq("employees.manager_id", user.id)
-      .order("expiry_date", { ascending: true });
+      .eq("employees.manager_id", user.id);
+
+    // Push dept + cert-type filters into the supabase query so the server
+    // returns the smallest possible set. Status (computed from dates) and
+    // search (across joined+concatenated columns) stay as in-memory steps.
+    if (typeFilters.length > 0) {
+      dataQuery = dataQuery.in("cert_type_id", typeFilters);
+    }
+    if (deptFilters.length > 0) {
+      dataQuery = dataQuery.in("employees.department", deptFilters);
+    }
+
+    const result = await dataQuery.order("expiry_date", { ascending: true });
 
     certifications = result.data;
     error = result.error;
@@ -112,6 +123,9 @@ export default async function CertificationsPage({
     status: getCertStatus(cert.expiry_date, cert.next_refresh_date),
   }));
 
+  // Guest mode keeps in-memory filtering (no supabase query). For supabase
+  // mode, dept + cert-type are already filtered server-side above; only
+  // status (computed) and search (joined string) remain.
   const filtered = allCerts.filter((cert) => {
     const matchesFilter =
       currentFilter === "all" || cert.status === currentFilter;
@@ -120,9 +134,9 @@ export default async function CertificationsPage({
       cert.employee_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       cert.cert_type_name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesDept =
-      !deptFilter || cert.employee_department === deptFilter;
+      !guestSid || deptFilters.length === 0 || deptFilters.includes(cert.employee_department);
     const matchesType =
-      typeFilters.length === 0 || typeFilters.includes(cert.cert_type_id);
+      !guestSid || typeFilters.length === 0 || typeFilters.includes(cert.cert_type_id);
     return matchesFilter && matchesSearch && matchesDept && matchesType;
   });
 
@@ -168,17 +182,14 @@ export default async function CertificationsPage({
             <Search className="h-4.5 w-4.5" style={{ width: "18px", height: "18px" }} />
           </button>
         </div>
-        <AutoSubmitSelect
+        <MultiSelectFilter
           name="dept"
-          defaultValue={deptFilter}
-          aria-label="סינון לפי מחלקה"
-          className="rounded-lg border border-border bg-white px-4 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary-ring cursor-pointer sm:w-44"
-        >
-          <option value="">כל המחלקות</option>
-          {departments.map((d) => (
-            <option key={d} value={d}>{d}</option>
-          ))}
-        </AutoSubmitSelect>
+          selected={deptFilters}
+          options={departments.map((d) => ({ value: d, label: d }))}
+          placeholder="כל המחלקות"
+          ariaLabel="סינון לפי מחלקה"
+          className="sm:w-44"
+        />
         <MultiSelectFilter
           name="type"
           selected={typeFilters}
