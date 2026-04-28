@@ -2,7 +2,6 @@ import { requireUser } from "@/lib/supabase/auth";
 import { getGuestSessionId } from "@/lib/guest-session";
 import { guestGetEmployeeCount, getGuestData } from "@/lib/guest-store";
 import { getCertStatus, formatDateHe } from "@/types/database";
-import Link from "next/link";
 import { Users, CheckCircle, AlertTriangle, XCircle, UserCheck, UserX } from "lucide-react";
 import type { ElementType } from "react";
 

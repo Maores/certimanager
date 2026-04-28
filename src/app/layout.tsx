@@ -1,5 +1,13 @@
 import type { Metadata } from "next";
+import { Noto_Sans_Hebrew } from "next/font/google";
 import "./globals.css";
+
+const notoHebrew = Noto_Sans_Hebrew({
+  subsets: ["hebrew"],
+  weight: ["300", "400", "500", "600", "700"],
+  display: "optional",
+  variable: "--font-noto-hebrew",
+});
 
 export const metadata: Metadata = {
   title: "CertiManager - ניהול הסמכות",
@@ -12,19 +20,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="he" dir="rtl" className="h-full">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Noto+Sans+Hebrew:wght@300;400;500;600;700&display=optional"
-          rel="stylesheet"
-        />
-      </head>
+    <html lang="he" dir="rtl" className={`h-full ${notoHebrew.variable}`}>
       <body className="h-full overflow-x-clip">{children}</body>
     </html>
   );

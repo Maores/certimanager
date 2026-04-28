@@ -90,9 +90,6 @@ const STATUS_MAP: Record<string, string> = {
 /** Status values that sometimes appear in the cert-type column — filter these out */
 const STATUS_VALUES_AS_CERT = new Set(["חלת", "מחלה", "פעיל", "לא פעיל", 'חל"ת', "חל״ת"]);
 
-/** Canonical cert type names */
-const CANONICAL_CERT_TYPES = ["נת״ע", "כביש 6", "חוצה ישראל", "נתיבי ישראל", "חוצה צפון (PFI)"] as const;
-
 /**
  * Normalize a raw cert-type string from the "הסמכה" column into canonical names.
  * Returns an array because some values map to multiple cert types
@@ -100,7 +97,7 @@ const CANONICAL_CERT_TYPES = ["נת״ע", "כביש 6", "חוצה ישראל", "
  */
 export function normalizeCertTypeName(raw: string): string[] {
   if (!raw) return [];
-  let s = raw.trim();
+  const s = raw.trim();
   if (!s || s === "-") return [];
 
   // Filter out status values that were mistakenly placed in the cert column

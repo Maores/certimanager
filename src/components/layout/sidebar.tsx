@@ -73,8 +73,11 @@ export default function Sidebar({ items, isGuest }: SidebarProps) {
   const moreBtnRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
-  // Close sheet on route change
+  // Close sheet on route change. Setting state inside an effect is normally
+  // discouraged (cascading renders), but here it's the right tool: pathname
+  // is the external source of truth and we mirror it into local UI state.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSheetOpen(false);
   }, [pathname]);
 
