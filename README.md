@@ -1,4 +1,4 @@
-# CertiManager
+# certi-manager
 
 Hebrew-language web app for tracking employees' time-limited certifications. Built for a single manager overseeing ~150 employees in the field.
 
