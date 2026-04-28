@@ -88,3 +88,15 @@ docs/notebooklm-*.md
 *.doc
 *.xlsx
 *.xls
+
+# Common credential / private-key files
+.npmrc
+.aws/
+.ssh/
+*.key
+*.p12
+*.pfx
+
+# IDE-local state
+.idea/
+.vscode/

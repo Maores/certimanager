@@ -1,84 +1,56 @@
-# CertiManager - Employee Certificates Manager
+# CertiManager
 
-A certification tracking and renewal management system for managers.
-Built with Next.js, Supabase, and Tailwind CSS.
+Hebrew-language web app for tracking employees' time-limited certifications. Built for a single manager overseeing ~150 employees in the field.
 
-## Features
+Stack: Next.js 16 (App Router) on Render, Supabase for Postgres + Auth + Storage, Tailwind v4 for styling, vitest for tests.
 
-- **Employee Management** - Add, edit, and manage employee profiles
-- **Certification Tracking** - Track certification types, issue dates, and expiry dates
-- **Expiry Alerts** - Visual dashboard showing expiring and expired certifications
-- **Image Upload** - Upload and store certification photos
-- **Hebrew RTL Interface** - Full Hebrew right-to-left interface
-- **Mobile Responsive** - Works on desktop and mobile devices
-- **Secure** - Supabase Auth with Row Level Security
+## Local setup
 
-## Tech Stack
+1. Create a Supabase project, then run `supabase/schema.sql` in its SQL editor.
+2. Create `.env.local` with:
+   ```
+   NEXT_PUBLIC_SUPABASE_URL=<your project url>
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=<the anon/public key — never the service-role key>
+   ```
+3. `npm install && npm run dev` → http://localhost:3000.
 
-- **Frontend:** Next.js (App Router), React, TypeScript
-- **Styling:** Tailwind CSS (RTL support)
-- **Backend:** Supabase (PostgreSQL, Auth, Storage)
-- **Hosting:** Vercel (free tier)
+To create the first user, add them in Supabase Dashboard → Authentication → Users.
 
-## Setup
-
-### 1. Create a Supabase Project
-
-1. Go to [supabase.com](https://supabase.com) and create a free account
-2. Create a new project
-3. Go to **SQL Editor** and run the contents of `supabase/schema.sql`
-4. Go to **Authentication > Providers** and ensure Email provider is enabled
-
-### 2. Configure Environment Variables
-
-Create a `.env.local` file in the project root with the following two values from Supabase Dashboard → Settings → API:
-
-```
-NEXT_PUBLIC_SUPABASE_URL=your-supabase-url-here
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key-here
-```
-
-- `NEXT_PUBLIC_SUPABASE_URL` — your project URL
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` — the anon/public key (safe for client; do NOT use the service-role key)
-
-### 3. Install and Run
-
-```bash
-npm install
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-### 4. Create Your Account
-
-1. Go to Supabase Dashboard > Authentication > Users
-2. Click "Add User" and create a user with email/password
-3. Log in to CertiManager with those credentials
-
-## Project Structure
+## Layout
 
 ```
 src/
-  app/
-    login/            # Login page and auth actions
-    dashboard/        # Dashboard layout and pages
-      employees/      # Employee management (list, add, edit, detail)
-      certifications/ # Certification management
-      cert-types/     # Certification type management
-  components/
-    layout/           # Sidebar navigation
-    employees/        # Employee form component
-    certifications/   # Certification form component
-  lib/supabase/       # Supabase client utilities
-  types/              # TypeScript type definitions
+  app/                       Next.js App Router pages
+    login/                   Login + guest entry
+    dashboard/
+      employees/             Employee CRUD
+      certifications/        Cert CRUD + image upload
+      cert-types/            Cert-type management
+      candidates/            Course candidates → promotion flow
+      import/                Excel bulk import
+      tasks/                 Task list
+      reports/               Stats and timeline
+      feedback/              Inbox for in-app reports
+  components/                UI components grouped by feature
+  lib/supabase/              Client + server Supabase factories
+  lib/excel-parser.ts        Excel → workers + certs parser
+  middleware.ts              Auth gate for /dashboard
+  types/database.ts          Shared types + helper functions
 supabase/
-  schema.sql          # Database schema (run in Supabase SQL Editor)
+  schema.sql                 Initial schema
+  migration_*.sql            Incremental migrations, applied in order
 ```
 
-## Deployment (Vercel)
+## Tests
 
-1. Push code to GitHub
-2. Go to [vercel.com](https://vercel.com) and import the repository
-3. Add environment variables in Vercel project settings
-4. Deploy
+```
+npx vitest run --exclude '**/node_modules/**' --exclude '**/.claude/**'
+```
+
+## Deploy
+
+Render auto-deploys on push to `master`. Build command: `npm install && npm run build`. Start command: `npm start`. Environment variables set in the Render dashboard.
+
+## Multi-tenancy
+
+Every query scopes by `manager_id = auth.uid()`. Supabase RLS is the second line of defense; the application layer is the first. When adding new data access, check both the server action and the page-level fetch include the filter.

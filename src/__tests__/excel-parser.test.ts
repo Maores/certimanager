@@ -775,8 +775,8 @@ describe("parseExcel", () => {
           [],
           [],
           ["מס׳", "שם פרטי", "שם משפחה", "תעודת זהות", "תוקף תעודה", "מועד רענון הבא", "סטטוס"],
-          ["1", "בהאא", "קליבו", "031530157", "24/07/2024", "26/06/2026", "מאומת"],
-          ["2", "עפו", "קבלאן", "040389827", "24/07/2024", "26/06/2026", "מאומת"],
+          ["1", "ישראל", "ישראלי", "123456789", "24/07/2024", "26/06/2026", "מאומת"],
+          ["2", "משה", "כהן", "987654321", "24/07/2024", "26/06/2026", "מאומת"],
         ],
       },
     ]);
@@ -789,9 +789,9 @@ describe("parseExcel", () => {
     expect(result.sheets[0].name).toBe("מאושרי נת״ע לשיבוץ");
 
     const first = result.sheets[0].workers[0];
-    expect(first.employeeNumber).toBe("031530157");
-    expect(first.firstName).toBe("בהאא");
-    expect(first.lastName).toBe("קליבו");
+    expect(first.employeeNumber).toBe("123456789");
+    expect(first.firstName).toBe("ישראל");
+    expect(first.lastName).toBe("ישראלי");
     // Sheet-name match ("מאושרי נת״ע") supplies the default cert type
     expect(first.certTypeName).toBe("נת״ע");
   });
@@ -1085,7 +1085,7 @@ describe("parseExcel — data-quality sanity checks", () => {
         name: "מאושרי נת״ע",
         rows: [
           ["מספר זהות", "שם משפחה", "שם פרטי"],
-          ["111111111", "כהן-לוי", "בהאא"],   // hyphen + Hebrew
+          ["111111111", "כהן-לוי", "אבנר"],   // hyphen + Hebrew
           ["222222222", "O'Brien", "Patrick"], // apostrophe + English
           ["333333333", "St. John", "Mary"],   // period
         ],
