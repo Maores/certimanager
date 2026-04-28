@@ -31,15 +31,15 @@ Built with Next.js, Supabase, and Tailwind CSS.
 
 ### 2. Configure Environment Variables
 
-Copy `.env.example` to `.env.local` and fill in your Supabase credentials:
+Create a `.env.local` file in the project root with the following two values from Supabase Dashboard → Settings → API:
 
-```bash
-cp .env.example .env.local
+```
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-url-here
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key-here
 ```
 
-Find your credentials in Supabase Dashboard > Settings > API:
-- `NEXT_PUBLIC_SUPABASE_URL` - Your project URL
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Your anon/public key
+- `NEXT_PUBLIC_SUPABASE_URL` — your project URL
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` — the anon/public key (safe for client; do NOT use the service-role key)
 
 ### 3. Install and Run
 

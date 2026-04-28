@@ -632,7 +632,7 @@ Use `preview_start` with the `certimanager` launch config. Confirm the server co
 
 - [ ] **Step 2: Log in**
 
-Navigate the preview to `/login`, fill email `admin@certimanager.co.il`, password `Test123456`, submit.
+Navigate the preview to `/login`, fill email and password from your local credential store (do not commit credentials to this repo), submit.
 
 - [ ] **Step 3: 320×700 viewport**
 

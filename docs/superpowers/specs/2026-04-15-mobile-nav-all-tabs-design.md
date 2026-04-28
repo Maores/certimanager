@@ -229,7 +229,7 @@ Mocks required: `next/navigation` (`usePathname`), already patterned in existing
 
 ## Verification (manual, via preview_*)
 
-1. `preview_start`; log in (`admin@certimanager.co.il` / `Test123456`).
+1. `preview_start`; log in with admin credentials from your local credential store.
 2. `preview_resize` to **320×700**, **375×812**, **414×896** in turn. At each width:
    - All 5 pinned slots visible (4 tabs + "עוד").
    - No horizontal overflow: `preview_eval` confirms `document.documentElement.scrollWidth === window.innerWidth`.

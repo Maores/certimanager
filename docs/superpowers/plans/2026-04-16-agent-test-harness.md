@@ -21,7 +21,7 @@ The user must create the staging Supabase project manually before Task 2. This i
   3. Open SQL editor → paste contents of `supabase/schema.sql` → run.
   4. Paste contents of `supabase/migration_next_refresh_date.sql` → run.
   5. (Skip `migration_fix_nata_expiry_to_refresh.sql` — staging has no נת״ע data to fix.)
-  6. Authentication → Users → **Add user** → email `admin@test.local`, password `test-admin-pw-2026`, auto-confirm ON.
+  6. Authentication → Users → **Add user** → email `admin@test.local`, password `<choose-a-strong-password>`, auto-confirm ON.
   7. Settings → API → copy `URL`, `anon` `public` key, `service_role` `secret` key.
   8. Hand these 4 values (URL, anon, service_role, admin password) to the agent running Task 2.
 
@@ -82,7 +82,7 @@ SUPABASE_SERVICE_ROLE_KEY=replace-with-staging-service-role-key
 
 # Test admin credentials (created manually in staging Auth)
 TEST_ADMIN_EMAIL=admin@test.local
-TEST_ADMIN_PASSWORD=test-admin-pw-2026
+TEST_ADMIN_PASSWORD=replace-with-staging-admin-password
 ```
 
 - [ ] **Step 3: Create real `.env.test` using the 4 values from the user**
