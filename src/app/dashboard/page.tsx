@@ -4,6 +4,7 @@ import { guestGetEmployeeCount, getGuestData } from "@/lib/guest-store";
 import { getCertStatus, formatDateHe } from "@/types/database";
 import { Users, CheckCircle, AlertTriangle, XCircle, UserCheck, UserX } from "lucide-react";
 import type { ElementType } from "react";
+import { AlertBanner } from "@/components/dashboard/alert-banner";
 
 const colorMap: Record<
   string,
@@ -123,6 +124,12 @@ export default async function DashboardPage() {
           סקירה כללית של הסמכות העובדים
         </p>
       </div>
+
+      <AlertBanner
+        attentionCount={expiredCount + expiringSoonCount}
+        expiredCount={expiredCount}
+        expiringSoonCount={expiringSoonCount}
+      />
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 min-[400px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
