@@ -7,7 +7,7 @@ import { Search, Plus } from "lucide-react";
 import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { CertificationsList } from "@/components/certifications/certifications-list";
 
-type FilterTab = "all" | CertStatus;
+type FilterTab = "all" | CertStatus | "attention";
 
 const filterTabs: { key: FilterTab; label: string }[] = [
   { key: "all", label: "הכל" },
@@ -128,7 +128,10 @@ export default async function CertificationsPage({
   // status (computed) and search (joined string) remain.
   const filtered = allCerts.filter((cert) => {
     const matchesFilter =
-      currentFilter === "all" || cert.status === currentFilter;
+      currentFilter === "all" ||
+      (currentFilter === "attention"
+        ? cert.status === "expired" || cert.status === "expiring_soon"
+        : cert.status === currentFilter);
     const matchesSearch =
       !searchQuery ||
       cert.employee_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -146,10 +149,12 @@ export default async function CertificationsPage({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: "#0f172a" }}>
-            הסמכות
+            {currentFilter === "attention" ? "הסמכות שדורשות תשומת לב" : "הסמכות"}
           </h1>
           <p className="text-sm mt-1" style={{ color: "#94a3b8" }}>
-            ניהול ומעקב אחר הסמכות העובדים
+            {currentFilter === "attention"
+              ? "הסמכות שפג תוקפן או יפוג בקרוב"
+              : "ניהול ומעקב אחר הסמכות העובדים"}
           </p>
         </div>
         <Link
@@ -201,31 +206,33 @@ export default async function CertificationsPage({
       </form>
 
       {/* Filter tabs */}
-      <div className="flex gap-2 flex-wrap">
-        {filterTabs.map((tab) => {
-          const isActive = currentFilter === tab.key;
-          return (
-            <Link
-              key={tab.key}
-              href={`/dashboard/certifications?filter=${tab.key}${searchQuery ? `&search=${searchQuery}` : ""}${deptFilter ? `&dept=${deptFilter}` : ""}${typeFilter ? `&type=${typeFilter}` : ""}`}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-150 ${
-                isActive ? "text-white" : "hover:text-[#0f172a]"
-              }`}
-              style={
-                isActive
-                  ? { backgroundColor: "#2563eb", color: "#fff" }
-                  : {
-                      backgroundColor: "#fff",
-                      border: "1px solid #e2e8f0",
-                      color: "#64748b",
-                    }
-              }
-            >
-              {tab.label}
-            </Link>
-          );
-        })}
-      </div>
+      {currentFilter !== "attention" && (
+        <div className="flex gap-2 flex-wrap">
+          {filterTabs.map((tab) => {
+            const isActive = currentFilter === tab.key;
+            return (
+              <Link
+                key={tab.key}
+                href={`/dashboard/certifications?filter=${tab.key}${searchQuery ? `&search=${searchQuery}` : ""}${deptFilter ? `&dept=${deptFilter}` : ""}${typeFilter ? `&type=${typeFilter}` : ""}`}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-150 ${
+                  isActive ? "text-white" : "hover:text-[#0f172a]"
+                }`}
+                style={
+                  isActive
+                    ? { backgroundColor: "#2563eb", color: "#fff" }
+                    : {
+                        backgroundColor: "#fff",
+                        border: "1px solid #e2e8f0",
+                        color: "#64748b",
+                      }
+                }
+              >
+                {tab.label}
+              </Link>
+            );
+          })}
+        </div>
+      )}
 
       {/* Results count */}
       <p className="text-sm" style={{ color: "#94a3b8" }}>
