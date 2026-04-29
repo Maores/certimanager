@@ -89,4 +89,71 @@ describe("DashboardPage — alert banner integration", () => {
       screen.queryByText(/הסמכות דורשות תשומת לב/)
     ).not.toBeInTheDocument();
   });
+
+  it("renders the alert banner exactly once when there are urgent certs (no per-surface duplication)", async () => {
+    mocks.certs = [
+      {
+        id: "c1",
+        expiry_date: ymd(-5),
+        next_refresh_date: null,
+        employee_id: "e1",
+        cert_type_id: "ct1",
+        employees: { first_name: "טסט", last_name: "א" },
+        cert_types: { name: "נת״ע" },
+      },
+    ];
+    const element = await DashboardPage();
+    render(element);
+    const links = screen.getAllByRole("link", {
+      name: /הסמכות דורשות תשומת לב/,
+    });
+    expect(links).toHaveLength(1);
+  });
+});
+
+describe("DashboardPage — mobile/desktop split", () => {
+  beforeEach(() => {
+    mocks.certs = [];
+  });
+
+  it("renders the mobile hero grid (md:hidden) and the desktop stat grid (hidden md:block) in parallel", async () => {
+    const element = await DashboardPage();
+    const { container } = render(element);
+
+    // Mobile hero grid is present in DOM.
+    expect(
+      container.querySelector('[data-testid="mobile-quick-actions-grid"]')
+    ).toBeInTheDocument();
+
+    // Desktop block wrapper is present and has hidden md:block.
+    const desktopBlock = container.querySelector(
+      '[data-testid="desktop-dashboard-block"]'
+    );
+    expect(desktopBlock).toBeInTheDocument();
+    expect(desktopBlock?.className).toContain("hidden");
+    expect(desktopBlock?.className).toContain("md:block");
+
+    // Containment: stat-card grid is INSIDE the desktop block.
+    expect(
+      desktopBlock?.querySelector(".grid-cols-1")
+    ).toBeInTheDocument();
+
+    // Containment: mobile-quick-actions-grid is INSIDE the mobile wrapper.
+    const mobileWrapper = container.querySelector(
+      '[data-testid="mobile-dashboard-wrapper"]'
+    );
+    expect(
+      mobileWrapper?.querySelector(
+        '[data-testid="mobile-quick-actions-grid"]'
+      )
+    ).toBeInTheDocument();
+  });
+
+  it("wraps the mobile hero in a md:hidden container", async () => {
+    const element = await DashboardPage();
+    const { container } = render(element);
+    const wrapper = container.querySelector('[data-testid="mobile-dashboard-wrapper"]');
+    expect(wrapper).toBeInTheDocument();
+    expect(wrapper?.className).toContain("md:hidden");
+  });
 });
