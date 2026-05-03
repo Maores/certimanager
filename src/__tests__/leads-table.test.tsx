@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import type { CourseCandidate } from "@/types/database";
 
 vi.mock("next/navigation", () => ({
@@ -36,7 +36,11 @@ function makeLead(overrides: Partial<CourseCandidate> = {}): CourseCandidate {
   };
 }
 
-describe("LeadsTable", () => {
+// LeadsTable renders both layouts in the DOM (toggled by Tailwind responsive
+// classes). jsdom has no media queries, so both are present at test time —
+// tests scope to one or the other via data-testid wrappers.
+
+describe("LeadsTable — desktop table", () => {
   beforeEach(() => {
     markLeadRead.mockReset();
     updateLeadField.mockReset();
@@ -67,7 +71,8 @@ describe("LeadsTable", () => {
 
   it("shows a red border + tooltip on rows where the name is the placeholder", () => {
     render(<LeadsTable leads={[makeLead({ first_name: "ללא שם" })]} certTypes={[]} />);
-    const cell = screen.getByText("ללא שם");
+    const desktop = screen.getByTestId("leads-desktop");
+    const cell = within(desktop).getByText("ללא שם");
     expect(cell.className).toMatch(/border-red/);
     expect(cell.getAttribute("title")).toMatch(/שם חסר/);
   });
@@ -82,12 +87,81 @@ describe("LeadsTable", () => {
         certTypes={[]}
       />
     );
-    expect(screen.getByText("A")).toBeInTheDocument();
-    expect(screen.queryByText("B")).not.toBeInTheDocument();
+    const desktop = screen.getByTestId("leads-desktop");
+    expect(within(desktop).getByText("A")).toBeInTheDocument();
+    expect(within(desktop).queryByText("B")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("checkbox", { name: /הצג גם לא מעוניין/ }));
 
-    expect(screen.getByText("A")).toBeInTheDocument();
-    expect(screen.getByText("B")).toBeInTheDocument();
+    expect(within(desktop).getByText("A")).toBeInTheDocument();
+    expect(within(desktop).getByText("B")).toBeInTheDocument();
+  });
+});
+
+describe("LeadsTable — mobile cards", () => {
+  beforeEach(() => {
+    markLeadRead.mockReset();
+    updateLeadField.mockReset();
+  });
+
+  it("renders one card per visible lead inside the mobile container", () => {
+    render(
+      <LeadsTable
+        leads={[
+          makeLead({ id: "lead-a", first_name: "A" }),
+          makeLead({ id: "lead-b", first_name: "B" }),
+        ]}
+        certTypes={[]}
+      />
+    );
+    const mobile = screen.getByTestId("leads-mobile");
+    const cards = within(mobile).getAllByRole("article");
+    expect(cards).toHaveLength(2);
+    expect(within(mobile).getByText("A")).toBeInTheDocument();
+    expect(within(mobile).getByText("B")).toBeInTheDocument();
+  });
+
+  it("applies the unread tint to a card when read_at is null", () => {
+    render(<LeadsTable leads={[makeLead({ read_at: null })]} certTypes={[]} />);
+    const mobile = screen.getByTestId("leads-mobile");
+    const card = within(mobile).getByRole("article", { name: /אברהם/ });
+    expect(card.className).toMatch(/bg-yellow-50/);
+  });
+
+  it("calls markLeadRead when an unread card is tapped", () => {
+    render(<LeadsTable leads={[makeLead()]} certTypes={[]} />);
+    const mobile = screen.getByTestId("leads-mobile");
+    fireEvent.click(within(mobile).getByRole("article", { name: /אברהם/ }));
+    expect(markLeadRead).toHaveBeenCalledWith("lead-1");
+  });
+
+  it("does not call markLeadRead when tapping the status select inside a card", () => {
+    render(<LeadsTable leads={[makeLead()]} certTypes={[]} />);
+    const mobile = screen.getByTestId("leads-mobile");
+    const card = within(mobile).getByRole("article", { name: /אברהם/ });
+    const statusSelect = within(card).getByDisplayValue("ליד חדש");
+    fireEvent.change(statusSelect, { target: { value: "נוצר קשר" } });
+    expect(markLeadRead).not.toHaveBeenCalled();
+    expect(updateLeadField).toHaveBeenCalledWith("lead-1", "status", "נוצר קשר");
+  });
+
+  it("hides 'אישור משטרה' / הערות / עיר behind an expand toggle by default", () => {
+    render(<LeadsTable leads={[makeLead()]} certTypes={[]} />);
+    const mobile = screen.getByTestId("leads-mobile");
+    const card = within(mobile).getByRole("article", { name: /אברהם/ });
+    // The police-clearance select is in the expand area. Defaults to לא נשלח —
+    // present in the status select options too, so check via display value.
+    expect(within(card).queryByDisplayValue("לא נשלח")).not.toBeInTheDocument();
+
+    fireEvent.click(within(card).getByRole("button", { name: /עוד פרטים/ }));
+    expect(within(card).getByDisplayValue("לא נשלח")).toBeInTheDocument();
+  });
+
+  it("shows the empty-name placeholder with a red border + tooltip in the card", () => {
+    render(<LeadsTable leads={[makeLead({ first_name: "ללא שם" })]} certTypes={[]} />);
+    const mobile = screen.getByTestId("leads-mobile");
+    const placeholder = within(mobile).getByText("ללא שם");
+    expect(placeholder.className).toMatch(/border-red/);
+    expect(placeholder.getAttribute("title")).toMatch(/שם חסר/);
   });
 });

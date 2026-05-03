@@ -16,7 +16,7 @@ import {
   updateLeadField,
 } from "@/app/dashboard/candidates/leads-actions";
 import { isValidIsraeliId } from "@/lib/leads/normalize";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
 
 interface CertTypeOption {
   id: string;
@@ -27,6 +27,13 @@ interface LeadsTableProps {
   leads: CourseCandidate[];
   certTypes: CertTypeOption[];
 }
+
+type LeadField =
+  | "city"
+  | "notes"
+  | "status"
+  | "police_clearance_status"
+  | "cert_type_id";
 
 function isPhoneValid(p: string | null): boolean {
   if (!p) return false;
@@ -53,16 +60,7 @@ export function LeadsTable({ leads, certTypes }: LeadsTableProps) {
     });
   }
 
-  function handleField(
-    id: string,
-    field:
-      | "city"
-      | "notes"
-      | "status"
-      | "police_clearance_status"
-      | "cert_type_id",
-    value: string | null
-  ) {
+  function handleField(id: string, field: LeadField, value: string | null) {
     startTransition(async () => {
       await updateLeadField(id, field, value);
       router.refresh();
@@ -81,7 +79,28 @@ export function LeadsTable({ leads, certTypes }: LeadsTableProps) {
         הצג גם לא מעוניין
       </label>
 
-      <div className="overflow-x-auto rounded-lg border border-gray-200">
+      {/* Mobile: card stack — primary fields visible, secondary in expand */}
+      <div
+        data-testid="leads-mobile"
+        className="space-y-2 md:hidden"
+      >
+        {visibleLeads.map((l) => (
+          <LeadCard
+            key={l.id}
+            lead={l}
+            certTypes={certTypes}
+            isPending={isPending}
+            onRowClick={handleRowClick}
+            onField={handleField}
+          />
+        ))}
+      </div>
+
+      {/* Desktop: full table */}
+      <div
+        data-testid="leads-desktop"
+        className="hidden overflow-x-auto rounded-lg border border-gray-200 md:block"
+      >
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-right text-xs font-medium text-gray-500">
             <tr>
@@ -221,5 +240,199 @@ export function LeadsTable({ leads, certTypes }: LeadsTableProps) {
         </table>
       </div>
     </div>
+  );
+}
+
+interface LeadCardProps {
+  lead: CourseCandidate;
+  certTypes: CertTypeOption[];
+  isPending: boolean;
+  onRowClick: (id: string, readAt: string | null) => void;
+  onField: (id: string, field: LeadField, value: string | null) => void;
+}
+
+function LeadCard({
+  lead,
+  certTypes,
+  isPending,
+  onRowClick,
+  onField,
+}: LeadCardProps) {
+  const [expanded, setExpanded] = useState(false);
+  const isUnread = lead.read_at === null;
+  const idValid = isValidIsraeliId(lead.id_number);
+  const phoneValid = isPhoneValid(lead.phone);
+  const isEmptyName = lead.first_name === "ללא שם";
+
+  const stop = (e: React.MouseEvent) => e.stopPropagation();
+
+  return (
+    <article
+      aria-label={lead.first_name}
+      onClick={() => onRowClick(lead.id, lead.read_at)}
+      className={`rounded-lg border border-gray-200 p-3 transition-colors ${
+        isUnread ? "bg-yellow-50" : "bg-white"
+      } ${isPending ? "opacity-70" : ""}`}
+    >
+      {/* Header: name on the right (RTL) and ת.ז on the left */}
+      <div className="mb-2 flex items-start justify-between gap-2">
+        <span
+          className={
+            isEmptyName
+              ? "inline-block rounded border border-red-400 px-1.5 py-0.5 text-base font-medium text-red-700"
+              : "text-base font-semibold text-gray-900"
+          }
+          title={isEmptyName ? "שם חסר במקור הסנכרון" : undefined}
+        >
+          {lead.first_name}
+        </span>
+        <span
+          className="flex shrink-0 items-center gap-1 text-xs text-gray-600"
+          dir="ltr"
+        >
+          {!idValid && (
+            <AlertTriangle
+              className="h-3.5 w-3.5 text-yellow-600"
+              aria-label="ת.ז לא תקינה"
+            />
+          )}
+          {lead.id_number || "—"}
+        </span>
+      </div>
+
+      {/* Phone + city on one line */}
+      <div className="mb-3 flex items-center justify-between text-sm text-gray-700">
+        <span className="flex items-center gap-1" dir="ltr">
+          {!phoneValid && lead.phone && (
+            <AlertTriangle
+              className="h-3.5 w-3.5 text-yellow-600"
+              aria-label="טלפון לא תקין"
+            />
+          )}
+          {lead.phone || "—"}
+        </span>
+        <span className="text-xs text-gray-500">{lead.city || "—"}</span>
+      </div>
+
+      {/* Primary edits: status + cert type, two side-by-side selects */}
+      <div className="grid grid-cols-2 gap-2" onClick={stop}>
+        <label className="block">
+          <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-gray-500">
+            סטטוס
+          </span>
+          <select
+            value={lead.status}
+            onChange={(e) =>
+              onField(lead.id, "status", e.target.value as CandidateStatus)
+            }
+            className="w-full rounded border border-gray-200 bg-white px-2 py-2 text-sm"
+          >
+            {CANDIDATE_STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block">
+          <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-gray-500">
+            סוג קורס
+          </span>
+          <select
+            value={lead.cert_type_id ?? ""}
+            onChange={(e) =>
+              onField(lead.id, "cert_type_id", e.target.value || null)
+            }
+            className="w-full rounded border border-gray-200 bg-white px-2 py-2 text-sm"
+          >
+            <option value="">—</option>
+            {certTypes.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      {/* Expand toggle for secondary fields */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setExpanded((v) => !v);
+        }}
+        className="mt-2 inline-flex items-center gap-1 rounded text-xs font-medium text-gray-600 hover:text-gray-900"
+        aria-expanded={expanded}
+      >
+        {expanded ? (
+          <>
+            <ChevronUp className="h-3.5 w-3.5" />
+            הסתר פרטים
+          </>
+        ) : (
+          <>
+            <ChevronDown className="h-3.5 w-3.5" />
+            עוד פרטים
+          </>
+        )}
+      </button>
+
+      {expanded && (
+        <div className="mt-2 space-y-2 border-t border-gray-100 pt-2" onClick={stop}>
+          <label className="block">
+            <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-gray-500">
+              עיר
+            </span>
+            <input
+              type="text"
+              defaultValue={lead.city ?? ""}
+              onBlur={(e) =>
+                e.target.value !== (lead.city ?? "") &&
+                onField(lead.id, "city", e.target.value)
+              }
+              className="w-full rounded border border-gray-200 bg-white px-2 py-2 text-sm"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-gray-500">
+              אישור משטרה
+            </span>
+            <select
+              value={lead.police_clearance_status}
+              onChange={(e) =>
+                onField(
+                  lead.id,
+                  "police_clearance_status",
+                  e.target.value as PoliceClearanceStatus
+                )
+              }
+              className="w-full rounded border border-gray-200 bg-white px-2 py-2 text-sm"
+            >
+              {POLICE_CLEARANCE_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-gray-500">
+              הערות
+            </span>
+            <input
+              type="text"
+              defaultValue={lead.notes ?? ""}
+              placeholder="—"
+              onBlur={(e) =>
+                e.target.value !== (lead.notes ?? "") &&
+                onField(lead.id, "notes", e.target.value || null)
+              }
+              className="w-full rounded border border-gray-200 bg-white px-2 py-2 text-sm"
+            />
+          </label>
+        </div>
+      )}
+    </article>
   );
 }
