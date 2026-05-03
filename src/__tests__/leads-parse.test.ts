@@ -54,4 +54,23 @@ describe("parseLeadsXlsx", () => {
     const result = parseLeadsXlsx(buf);
     expect(result.rows).toEqual([]);
   });
+
+  it("matches the live sheet header 'מה מספר תעודת הזהות?' for the ID column", () => {
+    const buf = buildXlsx([
+      ["first name", "phone", "עיר", "מה מספר תעודת הזהות?"],
+      ["אברהם", "972502977325", "תל אביב", "324374198"],
+    ]);
+    const result = parseLeadsXlsx(buf);
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0].id_number).toBe("324374198");
+  });
+
+  it("falls back to substring keyword match when the ID header is phrased unexpectedly", () => {
+    const buf = buildXlsx([
+      ["first name", "phone", "עיר", "אנא הזן תעודת זהות מלאה"],
+      ["אברהם", "972502977325", "תל אביב", "324374198"],
+    ]);
+    const result = parseLeadsXlsx(buf);
+    expect(result.rows[0].id_number).toBe("324374198");
+  });
 });

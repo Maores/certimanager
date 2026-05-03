@@ -4,10 +4,6 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type {
-  CandidateStatus,
-  PoliceClearanceStatus,
-} from "@/types/database";
 
 async function authedClient() {
   const supabase = await createClient();
@@ -51,5 +47,3 @@ export async function updateLeadField(
     .eq("manager_id", user.id);
   revalidatePath("/dashboard/candidates");
 }
-
-export type { CandidateStatus, PoliceClearanceStatus };

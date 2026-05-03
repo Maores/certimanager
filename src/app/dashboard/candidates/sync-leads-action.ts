@@ -72,17 +72,24 @@ export async function syncLeadsFromSheet(): Promise<SyncSummary> {
   const { toInsert, toUpdate } = dedupLeads(normalized, existing);
 
   // 6. Updates: only first_name / last_name / phone / city, never status / cert_type / etc.
-  for (const m of toUpdate) {
-    await supabase
-      .from("course_candidates")
-      .update({
-        first_name: m.lead.first_name,
-        last_name: "",
-        phone: m.lead.phone,
-        city: m.lead.city,
-      })
-      .eq("id", m.existing_id)
-      .eq("manager_id", user.id);
+  // Batched in parallel — sequential awaits at ~100ms each would take ~22s for a 200-row sheet.
+  const UPDATE_BATCH = 25;
+  for (let i = 0; i < toUpdate.length; i += UPDATE_BATCH) {
+    const batch = toUpdate.slice(i, i + UPDATE_BATCH);
+    await Promise.all(
+      batch.map((m) =>
+        supabase
+          .from("course_candidates")
+          .update({
+            first_name: m.lead.first_name,
+            last_name: "",
+            phone: m.lead.phone,
+            city: m.lead.city,
+          })
+          .eq("id", m.existing_id)
+          .eq("manager_id", user.id)
+      )
+    );
   }
 
   // 7. Inserts

@@ -18,9 +18,17 @@ export interface DedupResult {
 }
 
 /**
- * Match priority: valid id_number → phone (only if both sides are valid).
- * "Valid" for id_number means the lead's flags.invalid_id === false.
- * "Valid" for phone means the lead's flags.invalid_phone === false.
+ * Match priority: id_number → phone, both as raw strings.
+ *
+ * The spec originally restricted ID matches to checksum-valid IDs. In practice,
+ * roughly a third of the source rows have invalid checksums (typos, partial
+ * digits, or non-numeric placeholders), and they re-appear verbatim across
+ * syncs. Using the raw string as the dedup key keeps re-syncs idempotent for
+ * those rows; the cost — that a manager fixing a typo in the source produces a
+ * "new" lead instead of an update — is rare and recoverable manually.
+ *
+ * `invalid_id` / `invalid_phone` flags continue to drive the visual warnings
+ * in the UI but no longer gate dedup.
  */
 export function dedupLeads(
   incoming: NormalizedLead[],
@@ -38,9 +46,9 @@ export function dedupLeads(
 
   for (const lead of incoming) {
     let match: ExistingCandidate | undefined;
-    if (!lead.flags.invalid_id && byIdNumber.has(lead.id_number)) {
+    if (lead.id_number && byIdNumber.has(lead.id_number)) {
       match = byIdNumber.get(lead.id_number);
-    } else if (!lead.flags.invalid_phone && byPhone.has(lead.phone)) {
+    } else if (lead.phone && byPhone.has(lead.phone)) {
       match = byPhone.get(lead.phone);
     }
     if (match) {
