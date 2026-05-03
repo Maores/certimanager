@@ -1,6 +1,7 @@
+import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/supabase/auth";
 import { getGuestSessionId } from "@/lib/guest-session";
-import { getGuestData } from "@/lib/guest-store";
+import { isSuperAdmin } from "@/lib/super-admin";
 import { getCertStatus } from "@/types/database";
 import {
   Users,
@@ -15,47 +16,36 @@ import {
 } from "lucide-react";
 
 export default async function ReportsPage() {
+  // Reports page is gated to super-admins only. Guests and other auth users
+  // redirect home before any data fetching runs.
   const guestSid = await getGuestSessionId();
-
-  let allEmployees: any[];
-  let allCertsRaw: any[];
-  let allCertTypes: any[];
-
   if (guestSid) {
-    const data = getGuestData(guestSid);
-    allEmployees = data.employees;
-    allCertTypes = data.certTypes;
-    allCertsRaw = data.certifications.map((cert: any) => {
-      const emp = data.employees.find((e: any) => e.id === cert.employee_id);
-      const ct = data.certTypes.find((t: any) => t.id === cert.cert_type_id);
-      return {
-        ...cert,
-        employees: emp ? { first_name: emp.first_name, last_name: emp.last_name, department: emp.department } : null,
-        cert_types: ct ? { name: ct.name } : null,
-      };
-    }).sort((a: any, b: any) => (a.expiry_date || "").localeCompare(b.expiry_date || ""));
-  } else {
-    const { user, supabase } = await requireUser();
-
-    const [
-      { data: employees },
-      { data: certifications },
-      { data: certTypes },
-    ] = await Promise.all([
-      supabase.from("employees").select("id, first_name, last_name, department, status").eq("manager_id", user.id),
-      supabase
-        .from("certifications")
-        .select(
-          "id, expiry_date, cert_type_id, employee_id, employees!inner(first_name, last_name, department, manager_id), cert_types(name)"
-        )
-        .eq("employees.manager_id", user.id)
-        .order("expiry_date", { ascending: true }),
-      supabase.from("cert_types").select("id, name").eq("manager_id", user.id),
-    ]);
-    allEmployees = employees || [];
-    allCertsRaw = certifications || [];
-    allCertTypes = certTypes || [];
+    redirect("/dashboard");
   }
+
+  const { user, supabase } = await requireUser();
+  if (!isSuperAdmin(user.email)) {
+    redirect("/dashboard");
+  }
+
+  const [
+    { data: employees },
+    { data: certifications },
+    { data: certTypes },
+  ] = await Promise.all([
+    supabase.from("employees").select("id, first_name, last_name, department, status").eq("manager_id", user.id),
+    supabase
+      .from("certifications")
+      .select(
+        "id, expiry_date, cert_type_id, employee_id, employees!inner(first_name, last_name, department, manager_id), cert_types(name)"
+      )
+      .eq("employees.manager_id", user.id)
+      .order("expiry_date", { ascending: true }),
+    supabase.from("cert_types").select("id, name").eq("manager_id", user.id),
+  ]);
+  const allEmployees: any[] = employees || [];
+  const allCertsRaw: any[] = certifications || [];
+  const allCertTypes: any[] = certTypes || [];
 
   const allCerts = (allCertsRaw).map((c: any) => ({
     ...c,
