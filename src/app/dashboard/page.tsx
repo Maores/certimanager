@@ -4,6 +4,9 @@ import { guestGetEmployeeCount, getGuestData } from "@/lib/guest-store";
 import { getCertStatus, formatDateHe } from "@/types/database";
 import { Users, CheckCircle, AlertTriangle, XCircle, UserCheck, UserX } from "lucide-react";
 import type { ElementType } from "react";
+import { AlertBanner } from "@/components/dashboard/alert-banner";
+import { MobileDashboardHero } from "@/components/dashboard/mobile-dashboard-hero";
+import { ExpiringEmptyState } from "@/components/dashboard/expiring-empty-state";
 
 const colorMap: Record<
   string,
@@ -84,7 +87,7 @@ export default async function DashboardPage() {
   let validCount = 0;
   let expiringSoonCount = 0;
   let expiredCount = 0;
-  const expiringSoonList: { employee: string; cert: string; expires: string; status: string }[] = [];
+  const expiringSoonList: { employee: string; cert: string; expires: string; status: "expired" | "expiring_soon" }[] = [];
 
   for (const cert of certs) {
     const status = getCertStatus(cert.expiry_date);
@@ -124,170 +127,172 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-1 min-[400px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
-        {stats.map((stat) => {
-          const c = colorMap[stat.color];
-          const Icon = stat.icon;
-          return (
-            <div
-              key={stat.label}
-              className="rounded-xl p-3 sm:p-5 transition-shadow duration-200 border border-border bg-card"
-              style={{ boxShadow: "var(--shadow-xs)" }}
-            >
-              <div className="flex items-start justify-between mb-2 sm:mb-3">
-                <div
-                  className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-lg ${c.iconBg}`}
-                >
-                  <Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${c.text}`} />
-                </div>
-              </div>
-              <p className={`text-2xl sm:text-3xl font-bold ${c.text} ltr-nums`}>
-                {stat.value}
-              </p>
-              <p className="text-xs sm:text-sm mt-0.5 sm:mt-1 text-muted">
-                {stat.label}
-              </p>
-            </div>
-          );
-        })}
+      <AlertBanner
+        attentionCount={expiredCount + expiringSoonCount}
+        expiredCount={expiredCount}
+        expiringSoonCount={expiringSoonCount}
+      />
+
+      {/* Mobile (<768px): 4-tile grid + card list */}
+      <div className="md:hidden" data-testid="mobile-dashboard-wrapper">
+        <MobileDashboardHero
+          expiringList={expiringSoonList}
+          isGuest={Boolean(guestSid)}
+        />
       </div>
 
-      {/* Expiring / expired list */}
-      <section>
-        <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-foreground">
-          הסמכות שפג תוקפן או יפוג בקרוב
-        </h2>
-        {expiringSoonList.length === 0 ? (
-          <div
-            className="rounded-xl p-10 text-center"
-            style={{
-              backgroundColor: "var(--card)",
-              border: "1px solid var(--border)",
-              boxShadow: "var(--shadow-xs)",
-            }}
-          >
+      {/* Desktop (≥768px): stat cards + horizontal table */}
+      <div
+        className="hidden md:block space-y-6 sm:space-y-8"
+        data-testid="desktop-dashboard-block"
+      >
+        {/* Stat cards */}
+        <div className="grid grid-cols-1 min-[400px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+          {stats.map((stat) => {
+            const c = colorMap[stat.color];
+            const Icon = stat.icon;
+            return (
+              <div
+                key={stat.label}
+                className="rounded-xl p-3 sm:p-5 transition-shadow duration-200 border border-border bg-card"
+                style={{ boxShadow: "var(--shadow-xs)" }}
+              >
+                <div className="flex items-start justify-between mb-2 sm:mb-3">
+                  <div
+                    className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-lg ${c.iconBg}`}
+                  >
+                    <Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${c.text}`} />
+                  </div>
+                </div>
+                <p className={`text-2xl sm:text-3xl font-bold ${c.text} ltr-nums`}>
+                  {stat.value}
+                </p>
+                <p className="text-xs sm:text-sm mt-0.5 sm:mt-1 text-muted">
+                  {stat.label}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Expiring / expired table */}
+        <section>
+          <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-foreground">
+            הסמכות שפג תוקפן או יפוג בקרוב
+          </h2>
+          {expiringSoonList.length === 0 ? (
+            <ExpiringEmptyState />
+          ) : (
             <div
-              className="flex items-center justify-center w-12 h-12 rounded-full mx-auto mb-3"
-              style={{ backgroundColor: "var(--success-light)" }}
+              className="rounded-xl overflow-x-auto"
+              style={{
+                backgroundColor: "var(--card)",
+                border: "1px solid var(--border)",
+                boxShadow: "var(--shadow-sm)",
+              }}
             >
-              <CheckCircle className="w-6 h-6" style={{ color: "var(--success)" }} />
-            </div>
-            <p className="font-medium" style={{ color: "var(--foreground)" }}>
-              הכל תקין
-            </p>
-            <p className="text-sm mt-1" style={{ color: "var(--muted)" }}>
-              אין הסמכות שפג תוקפן או עומדות לפוג
-            </p>
-          </div>
-        ) : (
-          <div
-            className="rounded-xl overflow-x-auto"
-            style={{
-              backgroundColor: "var(--card)",
-              border: "1px solid var(--border)",
-              boxShadow: "var(--shadow-sm)",
-            }}
-          >
-            <table className="w-full text-sm min-w-[500px]">
-              <caption className="sr-only">הסמכות שפג תוקפן או יפוג בקרוב</caption>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                  <th
-                    scope="col"
-                    className="text-right px-5 py-3 font-medium text-sm"
-                    style={{ color: "var(--muted)" }}
-                  >
-                    עובד
-                  </th>
-                  <th
-                    scope="col"
-                    className="text-right px-5 py-3 font-medium text-sm"
-                    style={{ color: "var(--muted)" }}
-                  >
-                    הסמכה
-                  </th>
-                  <th
-                    scope="col"
-                    className="text-right px-5 py-3 font-medium text-sm"
-                    style={{ color: "var(--muted)" }}
-                  >
-                    תאריך תפוגה
-                  </th>
-                  <th
-                    scope="col"
-                    className="text-right px-5 py-3 font-medium text-sm"
-                    style={{ color: "var(--muted)" }}
-                  >
-                    סטטוס
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {expiringSoonList.map((row, i) => (
-                  <tr
-                    key={i}
-                    className="transition-colors duration-150 hover:bg-card-hover"
-                    style={{
-                      borderBottom:
-                        i < expiringSoonList.length - 1
-                          ? "1px solid var(--border-light)"
-                          : "none",
-                    }}
-                  >
-                    <td
-                      className="px-5 py-3.5 font-medium"
-                      style={{ color: "var(--foreground)" }}
+              <table className="w-full text-sm min-w-[500px]">
+                <caption className="sr-only">
+                  הסמכות שפג תוקפן או יפוג בקרוב
+                </caption>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                    <th
+                      scope="col"
+                      className="text-right px-5 py-3 font-medium text-sm"
+                      style={{ color: "var(--muted)" }}
                     >
-                      {row.employee}
-                    </td>
-                    <td className="px-5 py-3.5" style={{ color: "var(--muted)" }}>
-                      {row.cert}
-                    </td>
-                    <td
-                      className="px-5 py-3.5 font-medium ltr-nums"
-                      style={{ color: "var(--foreground)" }}
+                      עובד
+                    </th>
+                    <th
+                      scope="col"
+                      className="text-right px-5 py-3 font-medium text-sm"
+                      style={{ color: "var(--muted)" }}
                     >
-                      {formatDateHe(row.expires)}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      {row.status === "expired" ? (
-                        <span
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
-                          style={{
-                            backgroundColor: "var(--danger-light)",
-                            color: "var(--danger)",
-                          }}
-                        >
-                          <span
-                            className="w-1.5 h-1.5 rounded-full"
-                            style={{ backgroundColor: "var(--danger)" }}
-                          />
-                          פג תוקף
-                        </span>
-                      ) : (
-                        <span
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
-                          style={{
-                            backgroundColor: "var(--warning-light)",
-                            color: "var(--warning)",
-                          }}
-                        >
-                          <span
-                            className="w-1.5 h-1.5 rounded-full"
-                            style={{ backgroundColor: "var(--warning)" }}
-                          />
-                          פג בקרוב
-                        </span>
-                      )}
-                    </td>
+                      הסמכה
+                    </th>
+                    <th
+                      scope="col"
+                      className="text-right px-5 py-3 font-medium text-sm"
+                      style={{ color: "var(--muted)" }}
+                    >
+                      תאריך תפוגה
+                    </th>
+                    <th
+                      scope="col"
+                      className="text-right px-5 py-3 font-medium text-sm"
+                      style={{ color: "var(--muted)" }}
+                    >
+                      סטטוס
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+                </thead>
+                <tbody>
+                  {expiringSoonList.map((row, i) => (
+                    <tr
+                      key={i}
+                      className="transition-colors duration-150 hover:bg-card-hover"
+                      style={{
+                        borderBottom:
+                          i < expiringSoonList.length - 1
+                            ? "1px solid var(--border-light)"
+                            : "none",
+                      }}
+                    >
+                      <td
+                        className="px-5 py-3.5 font-medium"
+                        style={{ color: "var(--foreground)" }}
+                      >
+                        {row.employee}
+                      </td>
+                      <td className="px-5 py-3.5" style={{ color: "var(--muted)" }}>
+                        {row.cert}
+                      </td>
+                      <td
+                        className="px-5 py-3.5 font-medium ltr-nums"
+                        style={{ color: "var(--foreground)" }}
+                      >
+                        {formatDateHe(row.expires)}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        {row.status === "expired" ? (
+                          <span
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
+                            style={{
+                              backgroundColor: "var(--danger-light)",
+                              color: "var(--danger)",
+                            }}
+                          >
+                            <span
+                              className="w-1.5 h-1.5 rounded-full"
+                              style={{ backgroundColor: "var(--danger)" }}
+                            />
+                            פג תוקף
+                          </span>
+                        ) : (
+                          <span
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
+                            style={{
+                              backgroundColor: "var(--warning-light)",
+                              color: "var(--warning)",
+                            }}
+                          >
+                            <span
+                              className="w-1.5 h-1.5 rounded-full"
+                              style={{ backgroundColor: "var(--warning)" }}
+                            />
+                            פג בקרוב
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   );
 }
