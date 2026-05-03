@@ -28,6 +28,19 @@ export function SyncLeadsButton() {
         setToast({ kind: "ok", msg: buildToast(summary) });
         router.refresh();
       } catch (e) {
+        // Re-throw Next.js redirect / not-found sentinels so the framework
+        // performs the navigation. Without this, an expired session looks like
+        // an error toast saying "redirect: /login" instead of redirecting.
+        if (
+          e &&
+          typeof e === "object" &&
+          "digest" in e &&
+          typeof (e as { digest: unknown }).digest === "string" &&
+          ((e as { digest: string }).digest.startsWith("NEXT_REDIRECT") ||
+            (e as { digest: string }).digest.startsWith("NEXT_NOT_FOUND"))
+        ) {
+          throw e;
+        }
         setToast({
           kind: "err",
           msg: e instanceof Error ? e.message : "שגיאה בסנכרון",

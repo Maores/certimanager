@@ -23,8 +23,16 @@ export async function syncLeadsFromSheet(): Promise<SyncSummary> {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // 1. Fetch
-  const res = await fetch(SHEET_URL, { cache: "no-store" });
+  // 1. Fetch — fetch() rejects on transport errors (DNS, connection reset, etc.),
+  // returns ok=false on HTTP 4xx/5xx. Translate both into a Hebrew message.
+  let res: Response;
+  try {
+    res = await fetch(SHEET_URL, { cache: "no-store" });
+  } catch {
+    throw new Error(
+      "שגיאת רשת בעת חיבור לגוגל שיטס. בדוק את החיבור ונסה שוב."
+    );
+  }
   if (!res.ok) {
     throw new Error(
       `שגיאה בקבלת הקובץ מגוגל שיטס (סטטוס ${res.status}). ודא ששיתוף הקישור פתוח.`
@@ -71,10 +79,11 @@ export async function syncLeadsFromSheet(): Promise<SyncSummary> {
   // 5. Dedup
   const { toInsert, toUpdate } = dedupLeads(normalized, existing);
 
-  // 6. Updates: only first_name / last_name / phone / city, never status / cert_type / etc.
-  // Batched in parallel — sequential awaits at ~100ms each would take ~22s for a 200-row sheet.
-  // Supabase's query builder returns { error } in the resolved value rather than throwing,
-  // so we capture it explicitly — silent partial failures would mislead the toast.
+  // 6. Updates: only the source fields (first_name / phone / city) — never
+  // status / cert_type / read_at / notes / last_name. The source sheet has no
+  // last_name column, so leaving it untouched preserves any curated value the
+  // manager entered after a re-promotion. Batched in parallel — sequential
+  // awaits at ~100ms each would take ~22s for a 200-row sheet.
   const UPDATE_BATCH = 25;
   for (let i = 0; i < toUpdate.length; i += UPDATE_BATCH) {
     const batch = toUpdate.slice(i, i + UPDATE_BATCH);
@@ -84,7 +93,6 @@ export async function syncLeadsFromSheet(): Promise<SyncSummary> {
           .from("course_candidates")
           .update({
             first_name: m.lead.first_name,
-            last_name: "",
             phone: m.lead.phone,
             city: m.lead.city,
           })

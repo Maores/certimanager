@@ -105,13 +105,14 @@ describe("syncLeadsFromSheet", () => {
     expect(summary.updated).toBe(1);
     expect(summary.total_rows).toBe(2);
 
-    // The existing row was updated, with only the source-fields touched
+    // The existing row was updated, with only the source-fields touched.
+    // Notably last_name is NOT in the payload — the sheet has no last_name
+    // column, so leaving it untouched preserves any curated value.
     expect(updateCalls).toHaveLength(1);
     expect(updateCalls[0].id).toBe("row-existing");
     expect(Object.keys(updateCalls[0].values).sort()).toEqual([
       "city",
       "first_name",
-      "last_name",
       "phone",
     ]);
     expect(updateCalls[0].values.city).toBe("ירושלים");
@@ -165,5 +166,14 @@ describe("syncLeadsFromSheet", () => {
       "@/app/dashboard/candidates/sync-leads-action"
     );
     await expect(syncLeadsFromSheet()).rejects.toThrow(/נכשלו 1 עדכונים.*constraint violation/);
+  });
+
+  it("translates a fetch transport rejection into a Hebrew error", async () => {
+    fetchMock.mockRejectedValue(new TypeError("fetch failed"));
+
+    const { syncLeadsFromSheet } = await import(
+      "@/app/dashboard/candidates/sync-leads-action"
+    );
+    await expect(syncLeadsFromSheet()).rejects.toThrow(/שגיאת רשת.*בדוק את החיבור/);
   });
 });

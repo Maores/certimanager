@@ -17,12 +17,15 @@ async function authedClient() {
 /** Mark a lead as read (clears the unread tint). Idempotent. */
 export async function markLeadRead(id: string): Promise<void> {
   const { supabase, user } = await authedClient();
-  await supabase
+  const { error } = await supabase
     .from("course_candidates")
     .update({ read_at: new Date().toISOString() })
     .eq("id", id)
     .eq("manager_id", user.id)
     .is("read_at", null);
+  if (error) {
+    throw new Error(`שמירה נכשלה: ${error.message}`);
+  }
   revalidatePath("/dashboard/candidates");
 }
 

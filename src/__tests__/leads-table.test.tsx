@@ -165,3 +165,58 @@ describe("LeadsTable — mobile cards", () => {
     expect(placeholder.getAttribute("title")).toMatch(/שם חסר/);
   });
 });
+
+describe("LeadsTable — error surfacing", () => {
+  beforeEach(() => {
+    markLeadRead.mockReset();
+    updateLeadField.mockReset();
+  });
+
+  it("renders an error banner when updateLeadField rejects", async () => {
+    updateLeadField.mockRejectedValue(
+      new Error("אדם זה כבר רשום לקורס הזה. בדוק את לשונית 'מועמדים'.")
+    );
+
+    render(
+      <LeadsTable
+        leads={[makeLead()]}
+        certTypes={[{ id: "ct-1", name: "קורס משולב" }]}
+      />
+    );
+    const mobile = screen.getByTestId("leads-mobile");
+    const card = within(mobile).getByRole("article", { name: /אברהם/ });
+    const certSelect = within(card).getByDisplayValue("—");
+    fireEvent.change(certSelect, { target: { value: "ct-1" } });
+
+    await screen.findByRole("alert");
+    expect(screen.getByRole("alert").textContent).toMatch(
+      /אדם זה כבר רשום לקורס הזה/
+    );
+  });
+
+  it("renders an error banner when markLeadRead rejects", async () => {
+    markLeadRead.mockRejectedValue(new Error("שמירה נכשלה: connection refused"));
+
+    render(<LeadsTable leads={[makeLead()]} certTypes={[]} />);
+    const mobile = screen.getByTestId("leads-mobile");
+    fireEvent.click(within(mobile).getByRole("article", { name: /אברהם/ }));
+
+    await screen.findByRole("alert");
+    expect(screen.getByRole("alert").textContent).toMatch(/שמירה נכשלה/);
+  });
+
+  it("dismisses the error banner when the close button is clicked", async () => {
+    updateLeadField.mockRejectedValue(new Error("עדכון נכשל: timeout"));
+
+    render(<LeadsTable leads={[makeLead()]} certTypes={[]} />);
+    const mobile = screen.getByTestId("leads-mobile");
+    const card = within(mobile).getByRole("article", { name: /אברהם/ });
+    fireEvent.change(within(card).getByDisplayValue("ליד חדש"), {
+      target: { value: "נוצר קשר" },
+    });
+
+    await screen.findByRole("alert");
+    fireEvent.click(screen.getByRole("button", { name: /סגור/ }));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+});

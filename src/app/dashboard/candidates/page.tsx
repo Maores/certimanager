@@ -51,12 +51,39 @@ export default async function CandidatesPage({
     .eq("manager_id", user.id)
     .is("cert_type_id", null);
 
+  // Total candidates count (unfiltered) — used for the tab badge.
   const { count: candidatesCount } = await supabase
     .from("course_candidates")
     .select("*", { count: "exact", head: true })
     .eq("manager_id", user.id)
     .neq("status", "הוסמך")
     .not("cert_type_id", "is", null);
+
+  // Filtered count — used for pagination on the candidates tab. Mirrors the
+  // listing query's filters so totalPages reflects what the user sees.
+  let filteredCandidatesCount: number | null = null;
+  if (activeTab === "candidates") {
+    let countQuery = supabase
+      .from("course_candidates")
+      .select("*", { count: "exact", head: true })
+      .eq("manager_id", user.id)
+      .neq("status", "הוסמך")
+      .not("cert_type_id", "is", null);
+    if (q) {
+      const safeQ = q
+        .replace(/\\/g, "\\\\")
+        .replace(/%/g, "\\%")
+        .replace(/_/g, "\\_")
+        .replace(/,/g, "\\,");
+      countQuery = countQuery.or(
+        `first_name.ilike.%${safeQ}%,last_name.ilike.%${safeQ}%,id_number.ilike.%${safeQ}%`
+      );
+    }
+    if (certTypeFilters.length > 0) countQuery = countQuery.in("cert_type_id", certTypeFilters);
+    if (statusFilters.length > 0) countQuery = countQuery.in("status", statusFilters);
+    const { count } = await countQuery;
+    filteredCandidatesCount = count ?? 0;
+  }
 
   let query = supabase
     .from("course_candidates")
@@ -217,7 +244,7 @@ export default async function CandidatesPage({
           <CandidatesTable candidates={rows} />
           <CandidatesPagination
             page={page}
-            totalPages={Math.ceil((candidatesCount ?? 0) / PAGE_SIZE)}
+            totalPages={Math.ceil((filteredCandidatesCount ?? 0) / PAGE_SIZE)}
             q={q}
             certType={cert_type}
             status={statusFilter}

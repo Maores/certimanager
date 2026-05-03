@@ -44,6 +44,7 @@ export function LeadsTable({ leads, certTypes }: LeadsTableProps) {
   const router = useRouter();
   const [showRejected, setShowRejected] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
 
   const visibleLeads = useMemo(() => {
     const interested = leads.filter((l) => l.status !== "לא מעוניין");
@@ -52,18 +53,43 @@ export function LeadsTable({ leads, certTypes }: LeadsTableProps) {
     return [...interested, ...rejected];
   }, [leads, showRejected]);
 
+  function surfaceError(e: unknown) {
+    // Re-throw Next.js redirect / not-found sentinels so the framework handles them.
+    if (
+      e &&
+      typeof e === "object" &&
+      "digest" in e &&
+      typeof (e as { digest: unknown }).digest === "string" &&
+      ((e as { digest: string }).digest.startsWith("NEXT_REDIRECT") ||
+        (e as { digest: string }).digest.startsWith("NEXT_NOT_FOUND"))
+    ) {
+      throw e;
+    }
+    setError(e instanceof Error ? e.message : "שגיאה בעדכון");
+  }
+
   function handleRowClick(id: string, readAt: string | null) {
     if (readAt) return;
+    setError(null);
     startTransition(async () => {
-      await markLeadRead(id);
-      router.refresh();
+      try {
+        await markLeadRead(id);
+        router.refresh();
+      } catch (e) {
+        surfaceError(e);
+      }
     });
   }
 
   function handleField(id: string, field: LeadField, value: string | null) {
+    setError(null);
     startTransition(async () => {
-      await updateLeadField(id, field, value);
-      router.refresh();
+      try {
+        await updateLeadField(id, field, value);
+        router.refresh();
+      } catch (e) {
+        surfaceError(e);
+      }
     });
   }
 
@@ -78,6 +104,23 @@ export function LeadsTable({ leads, certTypes }: LeadsTableProps) {
         />
         הצג גם לא מעוניין
       </label>
+
+      {error && (
+        <div
+          role="alert"
+          className="flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        >
+          <span>{error}</span>
+          <button
+            type="button"
+            onClick={() => setError(null)}
+            aria-label="סגור"
+            className="rounded p-0.5 text-red-600 hover:bg-red-100 cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Mobile: card stack — primary fields visible, secondary in expand */}
       <div
