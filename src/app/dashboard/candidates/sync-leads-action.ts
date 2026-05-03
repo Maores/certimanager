@@ -73,10 +73,12 @@ export async function syncLeadsFromSheet(): Promise<SyncSummary> {
 
   // 6. Updates: only first_name / last_name / phone / city, never status / cert_type / etc.
   // Batched in parallel — sequential awaits at ~100ms each would take ~22s for a 200-row sheet.
+  // Supabase's query builder returns { error } in the resolved value rather than throwing,
+  // so we capture it explicitly — silent partial failures would mislead the toast.
   const UPDATE_BATCH = 25;
   for (let i = 0; i < toUpdate.length; i += UPDATE_BATCH) {
     const batch = toUpdate.slice(i, i + UPDATE_BATCH);
-    await Promise.all(
+    const results = await Promise.all(
       batch.map((m) =>
         supabase
           .from("course_candidates")
@@ -90,6 +92,12 @@ export async function syncLeadsFromSheet(): Promise<SyncSummary> {
           .eq("manager_id", user.id)
       )
     );
+    const failed = results.filter((r) => r.error);
+    if (failed.length > 0) {
+      throw new Error(
+        `נכשלו ${failed.length} עדכונים: ${failed[0].error?.message ?? "שגיאה לא ידועה"}`
+      );
+    }
   }
 
   // 7. Inserts
@@ -106,7 +114,12 @@ export async function syncLeadsFromSheet(): Promise<SyncSummary> {
       police_clearance_status: "לא נשלח",
       read_at: null,
     }));
-    await supabase.from("course_candidates").insert(newRows);
+    const { error: insertError } = await supabase
+      .from("course_candidates")
+      .insert(newRows);
+    if (insertError) {
+      throw new Error(`הכנסה נכשלה: ${insertError.message}`);
+    }
   }
 
   revalidatePath("/dashboard/candidates");

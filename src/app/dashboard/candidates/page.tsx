@@ -64,8 +64,12 @@ export default async function CandidatesPage({
     .eq("manager_id", user.id)
     .order("created_at", { ascending: false });
 
+  // Default Supabase max return is 1000 rows per .select() — cap leads explicitly
+  // until the sheet outgrows that, at which point we'll need real pagination.
+  const LEADS_HARD_CAP = 1000;
+
   if (activeTab === "leads") {
-    query = query.is("cert_type_id", null);
+    query = query.is("cert_type_id", null).range(0, LEADS_HARD_CAP - 1);
   } else {
     query = query.neq("status", "הוסמך").not("cert_type_id", "is", null);
     if (q) {
@@ -209,7 +213,66 @@ export default async function CandidatesPage({
           certTypes={(certTypes || []).map((ct) => ({ id: ct.id, name: ct.name }))}
         />
       ) : (
-        <CandidatesTable candidates={rows} />
+        <>
+          <CandidatesTable candidates={rows} />
+          <CandidatesPagination
+            page={page}
+            totalPages={Math.ceil((candidatesCount ?? 0) / PAGE_SIZE)}
+            q={q}
+            certType={cert_type}
+            status={statusFilter}
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
+function CandidatesPagination({
+  page,
+  totalPages,
+  q,
+  certType,
+  status,
+}: {
+  page: number;
+  totalPages: number;
+  q: string | undefined;
+  certType: string | undefined;
+  status: string | undefined;
+}) {
+  if (totalPages <= 1) return null;
+
+  function buildPageUrl(p: number) {
+    const params = new URLSearchParams();
+    params.set("tab", "candidates");
+    if (q) params.set("q", q);
+    if (certType) params.set("cert_type", certType);
+    if (status) params.set("status", status);
+    if (p > 1) params.set("page", String(p));
+    return `/dashboard/candidates?${params.toString()}`;
+  }
+
+  return (
+    <div className="flex items-center justify-center gap-2 pt-2">
+      {page > 1 && (
+        <Link
+          href={buildPageUrl(page - 1)}
+          className="rounded-lg border border-border bg-white px-3 py-1.5 text-sm text-foreground hover:bg-gray-50 transition-colors"
+        >
+          הקודם
+        </Link>
+      )}
+      <span className="text-sm text-muted-foreground">
+        עמוד {page} מתוך {totalPages}
+      </span>
+      {page < totalPages && (
+        <Link
+          href={buildPageUrl(page + 1)}
+          className="rounded-lg border border-border bg-white px-3 py-1.5 text-sm text-foreground hover:bg-gray-50 transition-colors"
+        >
+          הבא
+        </Link>
       )}
     </div>
   );

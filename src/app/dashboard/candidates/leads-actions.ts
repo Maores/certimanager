@@ -40,10 +40,26 @@ export async function updateLeadField(
     [field]: value,
     read_at: new Date().toISOString(),
   };
-  await supabase
+  const { error } = await supabase
     .from("course_candidates")
     .update(updates)
     .eq("id", id)
     .eq("manager_id", user.id);
+  if (error) {
+    // The course_candidates table has UNIQUE(manager_id, id_number, cert_type_id).
+    // Assigning a cert_type_id to a lead whose id_number already has a candidate
+    // row with the same cert_type_id violates that constraint — surface a Hebrew
+    // message so the manager isn't left wondering why the dropdown reverted.
+    if (
+      field === "cert_type_id" &&
+      (error.code === "23505" ||
+        /duplicate key|unique constraint/i.test(error.message))
+    ) {
+      throw new Error(
+        "אדם זה כבר רשום לקורס הזה. בדוק את לשונית 'מועמדים'."
+      );
+    }
+    throw new Error(`עדכון נכשל: ${error.message}`);
+  }
   revalidatePath("/dashboard/candidates");
 }

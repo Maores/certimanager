@@ -45,16 +45,20 @@ WHERE NOT EXISTS (
 );
 
 -- ============================================
--- PART D: drop the single fake test candidate
+-- PART D: drop the single fake test candidate (one-shot, idempotent)
 -- ============================================
--- Verify count = 1 before running this block. If more than one row exists, STOP.
+-- On a virgin DB the table holds a single fake row left over from manual testing.
+-- Drop it. On any DB that already has real data (count > 1), skip silently — this
+-- block must never delete real data on re-run.
 DO $$
 DECLARE
   cnt INTEGER;
 BEGIN
   SELECT COUNT(*) INTO cnt FROM course_candidates;
-  IF cnt > 1 THEN
-    RAISE EXCEPTION 'course_candidates row count is %, expected 1. Aborting cleanup.', cnt;
+  IF cnt = 1 THEN
+    DELETE FROM course_candidates;
+    RAISE NOTICE 'Deleted 1 fake test candidate.';
+  ELSIF cnt > 1 THEN
+    RAISE NOTICE 'course_candidates already populated (% rows). Skipping cleanup.', cnt;
   END IF;
 END $$;
-DELETE FROM course_candidates;

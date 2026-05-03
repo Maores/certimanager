@@ -4,6 +4,11 @@ import * as XLSX from "xlsx";
 // --- Supabase mock: a tiny query builder that records calls ---
 const insertCalls: unknown[][] = [];
 const updateCalls: { id: string; values: Record<string, unknown> }[] = [];
+// Per-test overrides for the {error} return shape of insert/update
+const mockState: {
+  insertError: { message: string } | null;
+  updateError: { message: string } | null;
+} = { insertError: null, updateError: null };
 
 function makeQuery(table: string, existingRows: Record<string, unknown[]>) {
   return {
@@ -19,7 +24,7 @@ function makeQuery(table: string, existingRows: Record<string, unknown[]>) {
     },
     insert(rows: unknown[]) {
       insertCalls.push(rows);
-      return { error: null };
+      return { error: mockState.insertError };
     },
     update(values: Record<string, unknown>) {
       return {
@@ -27,7 +32,7 @@ function makeQuery(table: string, existingRows: Record<string, unknown[]>) {
           return {
             eq() {
               updateCalls.push({ id: val, values });
-              return { error: null };
+              return { error: mockState.updateError };
             },
           };
         },
@@ -63,6 +68,8 @@ const fetchMock = vi.fn();
 beforeEach(() => {
   insertCalls.length = 0;
   updateCalls.length = 0;
+  mockState.insertError = null;
+  mockState.updateError = null;
   fetchMock.mockReset();
   vi.stubGlobal("fetch", fetchMock);
 });
@@ -130,5 +137,33 @@ describe("syncLeadsFromSheet", () => {
       "@/app/dashboard/candidates/sync-leads-action"
     );
     await expect(syncLeadsFromSheet()).rejects.toThrow(/403/);
+  });
+
+  it("throws when the bulk insert fails (does not silently report success)", async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      arrayBuffer: async () => buildXlsxBuffer(),
+    });
+    mockState.insertError = { message: "permission denied" };
+
+    const { syncLeadsFromSheet } = await import(
+      "@/app/dashboard/candidates/sync-leads-action"
+    );
+    await expect(syncLeadsFromSheet()).rejects.toThrow(/הכנסה נכשלה.*permission denied/);
+  });
+
+  it("throws when an update batch fails (does not silently report success)", async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      arrayBuffer: async () => buildXlsxBuffer(),
+    });
+    mockState.updateError = { message: "constraint violation" };
+
+    const { syncLeadsFromSheet } = await import(
+      "@/app/dashboard/candidates/sync-leads-action"
+    );
+    await expect(syncLeadsFromSheet()).rejects.toThrow(/נכשלו 1 עדכונים.*constraint violation/);
   });
 });
