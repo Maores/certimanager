@@ -20,10 +20,14 @@ interface CandidatesTableProps {
 }
 
 const STATUS_COLORS: Record<CandidateStatus, string> = {
+  "ליד חדש": "bg-gray-100 text-gray-700",
+  "נוצר קשר": "bg-sky-100 text-sky-800",
+  "מעוניין": "bg-teal-100 text-teal-800",
   "ממתין": "bg-yellow-100 text-yellow-800",
   "נרשם": "bg-blue-100 text-blue-800",
   "השלים": "bg-green-100 text-green-800",
   "הוסמך": "bg-purple-100 text-purple-800",
+  "לא מעוניין": "bg-red-100 text-red-800",
 };
 
 export function CandidatesTable({ candidates }: CandidatesTableProps) {
