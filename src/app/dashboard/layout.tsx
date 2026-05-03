@@ -3,6 +3,7 @@ import { logout } from "@/app/login/actions";
 import { isGuestSession } from "@/lib/guest-session";
 import Sidebar, { NavItem } from "@/components/layout/sidebar";
 import { ReportButton } from "@/components/feedback/report-modal";
+import { isSuperAdmin } from "@/lib/super-admin";
 import { LogOut } from "lucide-react";
 
 const navItems: NavItem[] = [
@@ -17,6 +18,8 @@ const navItems: NavItem[] = [
   { label: "דיווחים", href: "/dashboard/feedback", icon: "feedback" },
 ];
 
+const SUPER_ADMIN_HREFS = ["/dashboard/reports", "/dashboard/feedback"];
+
 export default async function DashboardLayout({
   children,
 }: {
@@ -24,15 +27,21 @@ export default async function DashboardLayout({
 }) {
   const guest = await isGuestSession();
   let userEmail = "אורח";
+  let superAdmin = false;
 
   if (!guest) {
     const { user } = await requireUser();
     userEmail = user.email || "משתמש";
+    superAdmin = isSuperAdmin(user.email);
   }
+
+  const visibleNavItems = superAdmin
+    ? navItems
+    : navItems.filter((item) => !SUPER_ADMIN_HREFS.includes(item.href));
 
   return (
     <div dir="rtl" className="min-h-screen bg-background flex">
-      <Sidebar items={navItems} isGuest={guest} />
+      <Sidebar items={visibleNavItems} isGuest={guest} />
 
       <div className="flex-1 flex flex-col min-h-screen min-w-0">
         {/* Header */}

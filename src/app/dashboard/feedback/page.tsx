@@ -1,5 +1,7 @@
+import { redirect } from "next/navigation";
 import { MessageSquareWarning, Inbox } from "lucide-react";
 import { requireUser } from "@/lib/supabase/auth";
+import { isSuperAdmin } from "@/lib/super-admin";
 import { MarkReadButton } from "./mark-read-button";
 import { DeleteFeedbackButton } from "./delete-feedback-button";
 
@@ -38,7 +40,10 @@ function formatDateHe(iso: string): string {
 }
 
 export default async function FeedbackPage() {
-  const { supabase } = await requireUser();
+  const { user, supabase } = await requireUser();
+  if (!isSuperAdmin(user.email)) {
+    redirect("/dashboard");
+  }
   const { data } = await supabase
     .from("feedback")
     .select("id, category, description, route, viewport, user_agent, is_read, created_at")
