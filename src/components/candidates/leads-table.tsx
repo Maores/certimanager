@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type {
   CourseCandidate,
@@ -40,11 +40,27 @@ function isPhoneValid(p: string | null): boolean {
   return /^05\d-\d{3}-\d{4}$/.test(p);
 }
 
+/**
+ * Build an aria-label that disambiguates leads with duplicate first names.
+ * The source sheet has multiple rows with the same first_name (e.g. אמיר דואני
+ * appears twice). Without a disambiguator, screen-reader users and tests can't
+ * tell duplicates apart.
+ */
+function leadAriaLabel(lead: CourseCandidate): string {
+  const suffix = lead.id_number || lead.phone || lead.id;
+  return suffix ? `${lead.first_name} — ${suffix}` : lead.first_name;
+}
+
 export function LeadsTable({ leads, certTypes }: LeadsTableProps) {
   const router = useRouter();
   const [showRejected, setShowRejected] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  // Synchronous in-flight set: prop-level `lead.read_at` lags the DB by one
+  // router.refresh() round-trip, so a fast tap-tap could fire markLeadRead
+  // twice. The ref tracks "currently being marked" IDs so the second call
+  // bails immediately.
+  const markingRead = useRef<Set<string>>(new Set());
 
   const visibleLeads = useMemo(() => {
     const interested = leads.filter((l) => l.status !== "לא מעוניין");
@@ -70,6 +86,8 @@ export function LeadsTable({ leads, certTypes }: LeadsTableProps) {
 
   function handleRowClick(id: string, readAt: string | null) {
     if (readAt) return;
+    if (markingRead.current.has(id)) return;
+    markingRead.current.add(id);
     setError(null);
     startTransition(async () => {
       try {
@@ -77,6 +95,8 @@ export function LeadsTable({ leads, certTypes }: LeadsTableProps) {
         router.refresh();
       } catch (e) {
         surfaceError(e);
+      } finally {
+        markingRead.current.delete(id);
       }
     });
   }
@@ -167,7 +187,7 @@ export function LeadsTable({ leads, certTypes }: LeadsTableProps) {
               return (
                 <tr
                   key={l.id}
-                  aria-label={l.first_name}
+                  aria-label={leadAriaLabel(l)}
                   onClick={() => handleRowClick(l.id, l.read_at)}
                   className={`cursor-pointer hover:bg-gray-50/50 transition-colors ${
                     isUnread ? "bg-yellow-50" : ""
@@ -311,7 +331,7 @@ function LeadCard({
 
   return (
     <article
-      aria-label={lead.first_name}
+      aria-label={leadAriaLabel(lead)}
       onClick={() => onRowClick(lead.id, lead.read_at)}
       className={`rounded-lg border border-gray-200 p-3 transition-colors ${
         isUnread ? "bg-yellow-50" : "bg-white"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { RefreshCw } from "lucide-react";
 import type { SyncSummary } from "@/lib/leads/types";
@@ -12,6 +12,10 @@ export function SyncLeadsButton() {
   const [toast, setToast] = useState<{ kind: "ok" | "err"; msg: string } | null>(
     null
   );
+  // Synchronous gate against double-clicks on slow mobile: the `disabled`
+  // prop propagates on the next render which can lag behind a fast tap-tap.
+  // The ref is set immediately and read by the handler before the action runs.
+  const inFlight = useRef(false);
 
   function buildToast(s: SyncSummary): string {
     return [
@@ -21,6 +25,8 @@ export function SyncLeadsButton() {
   }
 
   function handleClick() {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setToast(null);
     startTransition(async () => {
       try {
@@ -45,6 +51,8 @@ export function SyncLeadsButton() {
           kind: "err",
           msg: e instanceof Error ? e.message : "שגיאה בסנכרון",
         });
+      } finally {
+        inFlight.current = false;
       }
     });
   }

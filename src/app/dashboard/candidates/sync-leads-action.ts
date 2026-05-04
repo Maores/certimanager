@@ -62,19 +62,31 @@ export async function syncLeadsFromSheet(): Promise<SyncSummary> {
     };
   });
 
-  // 4. Fetch existing candidates for this manager
-  const { data: existingData } = await supabase
-    .from("course_candidates")
-    .select("id, id_number, phone")
-    .eq("manager_id", user.id);
-
-  const existing: ExistingCandidate[] = (existingData ?? []).map(
-    (r: Record<string, unknown>) => ({
-      id: r.id as string,
-      id_number: (r.id_number as string) ?? "",
-      phone: (r.phone as string | null) ?? null,
-    })
-  );
+  // 4. Fetch existing candidates for this manager. Page through the table so
+  // dedup remains correct beyond Supabase's default 1000-row response cap —
+  // without paging, a manager whose total candidate rows exceed 1000 would
+  // silently see new leads inserted as duplicates of older rows.
+  const EXISTING_PAGE = 1000;
+  const existing: ExistingCandidate[] = [];
+  for (let from = 0; ; from += EXISTING_PAGE) {
+    const { data: page, error } = await supabase
+      .from("course_candidates")
+      .select("id, id_number, phone")
+      .eq("manager_id", user.id)
+      .range(from, from + EXISTING_PAGE - 1);
+    if (error) {
+      throw new Error(`טעינת נתונים קיימים נכשלה: ${error.message}`);
+    }
+    const rowsPage = (page ?? []) as Record<string, unknown>[];
+    for (const r of rowsPage) {
+      existing.push({
+        id: r.id as string,
+        id_number: (r.id_number as string) ?? "",
+        phone: (r.phone as string | null) ?? null,
+      });
+    }
+    if (rowsPage.length < EXISTING_PAGE) break;
+  }
 
   // 5. Dedup
   const { toInsert, toUpdate } = dedupLeads(normalized, existing);

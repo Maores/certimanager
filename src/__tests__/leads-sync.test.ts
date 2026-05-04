@@ -11,14 +11,26 @@ const mockState: {
 } = { insertError: null, updateError: null };
 
 function makeQuery(table: string, existingRows: Record<string, unknown[]>) {
+  // The existing-rows fetch is paginated: select(...).eq(manager_id).range(from, to).
+  // We return the full rows on the first range() call and an empty array on
+  // subsequent calls to terminate the loop.
+  let rangeCallCount = 0;
   return {
     select() {
       return {
         eq() {
-          return {
+          const terminal = {
             data: existingRows[table] ?? [],
             error: null,
+            range() {
+              if (rangeCallCount === 0) {
+                rangeCallCount++;
+                return { data: existingRows[table] ?? [], error: null };
+              }
+              return { data: [], error: null };
+            },
           };
+          return terminal;
         },
       };
     },
