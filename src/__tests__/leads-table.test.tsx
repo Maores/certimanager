@@ -153,7 +153,7 @@ describe("LeadsTable — mobile cards", () => {
     // present in the status select options too, so check via display value.
     expect(within(card).queryByDisplayValue("לא נשלח")).not.toBeInTheDocument();
 
-    fireEvent.click(within(card).getByRole("button", { name: /עוד פרטים/ }));
+    fireEvent.click(within(card).getByRole("button", { name: /^עוד$/ }));
     expect(within(card).getByDisplayValue("לא נשלח")).toBeInTheDocument();
   });
 
@@ -185,7 +185,7 @@ describe("LeadsTable — error surfacing", () => {
     );
     const mobile = screen.getByTestId("leads-mobile");
     const card = within(mobile).getByRole("article", { name: /אברהם/ });
-    const certSelect = within(card).getByDisplayValue("—");
+    const certSelect = within(card).getByDisplayValue("סוג קורס...");
     fireEvent.change(certSelect, { target: { value: "ct-1" } });
 
     await screen.findByRole("alert");
