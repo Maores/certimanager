@@ -55,9 +55,35 @@ export interface EmployeeTask {
 
 export type TaskStatus = "פתוח" | "בטיפול" | "הושלם";
 
-export type CandidateStatus = "ממתין" | "נרשם" | "השלים" | "הוסמך";
+export type CandidateStatus =
+  | "ליד חדש"
+  | "נוצר קשר"
+  | "מעוניין"
+  | "ממתין"
+  | "נרשם"
+  | "השלים"
+  | "הוסמך"
+  | "לא מעוניין";
 
-export const CANDIDATE_STATUSES: CandidateStatus[] = ["ממתין", "נרשם", "השלים", "הוסמך"];
+export const CANDIDATE_STATUSES: CandidateStatus[] = [
+  "ליד חדש",
+  "נוצר קשר",
+  "מעוניין",
+  "ממתין",
+  "נרשם",
+  "השלים",
+  "הוסמך",
+  "לא מעוניין",
+];
+
+export type PoliceClearanceStatus = "לא נשלח" | "נשלח" | "אושר" | "נדחה";
+
+export const POLICE_CLEARANCE_STATUSES: PoliceClearanceStatus[] = [
+  "לא נשלח",
+  "נשלח",
+  "אושר",
+  "נדחה",
+];
 
 export interface CourseCandidate {
   id: string;
@@ -67,10 +93,12 @@ export interface CourseCandidate {
   id_number: string;
   phone: string | null;
   city: string | null;
-  cert_type_id: string;
+  cert_type_id: string | null;
   cert_type_name?: string;
   status: CandidateStatus;
   notes: string | null;
+  police_clearance_status: PoliceClearanceStatus;
+  read_at: string | null;
   created_at: string;
   updated_at: string;
   is_employee?: boolean;

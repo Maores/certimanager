@@ -38,6 +38,8 @@ function makeCandidate(overrides: Partial<CourseCandidate> = {}): CourseCandidat
     cert_type_name: "נת״ע",
     status: "ממתין",
     notes: null,
+    police_clearance_status: "לא נשלח",
+    read_at: null,
     created_at: "2026-01-01T00:00:00Z",
     updated_at: "2026-01-01T00:00:00Z",
     is_employee: false,
