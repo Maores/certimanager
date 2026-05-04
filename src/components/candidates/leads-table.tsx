@@ -333,29 +333,29 @@ function LeadCard({
     <article
       aria-label={leadAriaLabel(lead)}
       onClick={() => onRowClick(lead.id, lead.read_at)}
-      className={`rounded-lg border border-gray-200 p-3 transition-colors ${
+      className={`rounded-lg border border-gray-200 p-2.5 transition-colors ${
         isUnread ? "bg-yellow-50" : "bg-white"
       } ${isPending ? "opacity-70" : ""}`}
     >
       {/* Header: name on the right (RTL) and ת.ז on the left */}
-      <div className="mb-2 flex items-start justify-between gap-2">
+      <div className="mb-1 flex items-baseline justify-between gap-2">
         <span
           className={
             isEmptyName
-              ? "inline-block rounded border border-red-400 px-1.5 py-0.5 text-base font-medium text-red-700"
-              : "text-base font-semibold text-gray-900"
+              ? "inline-block rounded border border-red-400 px-1.5 py-0.5 text-sm font-medium text-red-700"
+              : "text-sm font-semibold text-gray-900"
           }
           title={isEmptyName ? "שם חסר במקור הסנכרון" : undefined}
         >
           {lead.first_name}
         </span>
         <span
-          className="flex shrink-0 items-center gap-1 text-xs text-gray-600"
+          className="flex shrink-0 items-center gap-1 text-xs text-gray-500"
           dir="ltr"
         >
           {!idValid && (
             <AlertTriangle
-              className="h-3.5 w-3.5 text-yellow-600"
+              className="h-3 w-3 text-yellow-600"
               aria-label="ת.ז לא תקינה"
             />
           )}
@@ -364,87 +364,79 @@ function LeadCard({
       </div>
 
       {/* Phone + city on one line */}
-      <div className="mb-3 flex items-center justify-between text-sm text-gray-700">
+      <div className="mb-2 flex items-center justify-between text-xs text-gray-600">
         <span className="flex items-center gap-1" dir="ltr">
           {!phoneValid && lead.phone && (
             <AlertTriangle
-              className="h-3.5 w-3.5 text-yellow-600"
+              className="h-3 w-3 text-yellow-600"
               aria-label="טלפון לא תקין"
             />
           )}
           {lead.phone || "—"}
         </span>
-        <span className="text-xs text-gray-500">{lead.city || "—"}</span>
+        <span className="text-gray-500">{lead.city || "—"}</span>
       </div>
 
-      {/* Primary edits: status + cert type, two side-by-side selects */}
-      <div className="grid grid-cols-2 gap-2" onClick={stop}>
-        <label className="block">
-          <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-gray-500">
-            סטטוס
-          </span>
-          <select
-            value={lead.status}
-            onChange={(e) =>
-              onField(lead.id, "status", e.target.value as CandidateStatus)
-            }
-            className="w-full rounded border border-gray-200 bg-white px-2 py-2 text-sm"
-          >
-            {CANDIDATE_STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block">
-          <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-gray-500">
-            סוג קורס
-          </span>
-          <select
-            value={lead.cert_type_id ?? ""}
-            onChange={(e) =>
-              onField(lead.id, "cert_type_id", e.target.value || null)
-            }
-            className="w-full rounded border border-gray-200 bg-white px-2 py-2 text-sm"
-          >
-            <option value="">—</option>
-            {certTypes.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
+      {/* Primary edits: status + cert type — selects render as inline pills */}
+      <div className="grid grid-cols-2 gap-1.5" onClick={stop}>
+        <select
+          aria-label="סטטוס"
+          value={lead.status}
+          onChange={(e) =>
+            onField(lead.id, "status", e.target.value as CandidateStatus)
+          }
+          className="w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs"
+        >
+          {CANDIDATE_STATUSES.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+        <select
+          aria-label="סוג קורס"
+          value={lead.cert_type_id ?? ""}
+          onChange={(e) =>
+            onField(lead.id, "cert_type_id", e.target.value || null)
+          }
+          className="w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs"
+        >
+          <option value="">סוג קורס...</option>
+          {certTypes.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
       </div>
 
-      {/* Expand toggle for secondary fields */}
+      {/* Expand toggle for secondary fields — text-only, no icon padding */}
       <button
         type="button"
         onClick={(e) => {
           e.stopPropagation();
           setExpanded((v) => !v);
         }}
-        className="mt-2 inline-flex items-center gap-1 rounded text-xs font-medium text-gray-600 hover:text-gray-900"
+        className="mt-1.5 inline-flex items-center gap-0.5 rounded text-[11px] font-medium text-gray-500 hover:text-gray-900"
         aria-expanded={expanded}
       >
         {expanded ? (
           <>
-            <ChevronUp className="h-3.5 w-3.5" />
-            הסתר פרטים
+            <ChevronUp className="h-3 w-3" />
+            הסתר
           </>
         ) : (
           <>
-            <ChevronDown className="h-3.5 w-3.5" />
-            עוד פרטים
+            <ChevronDown className="h-3 w-3" />
+            עוד
           </>
         )}
       </button>
 
       {expanded && (
-        <div className="mt-2 space-y-2 border-t border-gray-100 pt-2" onClick={stop}>
+        <div className="mt-1.5 space-y-1.5 border-t border-gray-100 pt-1.5" onClick={stop}>
           <label className="block">
-            <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-gray-500">
+            <span className="mb-0.5 block text-[10px] font-medium tracking-wide text-gray-500">
               עיר
             </span>
             <input
@@ -454,11 +446,11 @@ function LeadCard({
                 e.target.value !== (lead.city ?? "") &&
                 onField(lead.id, "city", e.target.value)
               }
-              className="w-full rounded border border-gray-200 bg-white px-2 py-2 text-sm"
+              className="w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs"
             />
           </label>
           <label className="block">
-            <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-gray-500">
+            <span className="mb-0.5 block text-[10px] font-medium tracking-wide text-gray-500">
               אישור משטרה
             </span>
             <select
@@ -470,7 +462,7 @@ function LeadCard({
                   e.target.value as PoliceClearanceStatus
                 )
               }
-              className="w-full rounded border border-gray-200 bg-white px-2 py-2 text-sm"
+              className="w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs"
             >
               {POLICE_CLEARANCE_STATUSES.map((s) => (
                 <option key={s} value={s}>
@@ -480,7 +472,7 @@ function LeadCard({
             </select>
           </label>
           <label className="block">
-            <span className="mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-gray-500">
+            <span className="mb-0.5 block text-[10px] font-medium tracking-wide text-gray-500">
               הערות
             </span>
             <input
@@ -491,7 +483,7 @@ function LeadCard({
                 e.target.value !== (lead.notes ?? "") &&
                 onField(lead.id, "notes", e.target.value || null)
               }
-              className="w-full rounded border border-gray-200 bg-white px-2 py-2 text-sm"
+              className="w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs"
             />
           </label>
         </div>

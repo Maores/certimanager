@@ -58,12 +58,12 @@ export function SyncLeadsButton() {
   }
 
   return (
-    <div className="flex flex-col items-end gap-2">
+    <div className="flex flex-col items-stretch gap-2 sm:items-end">
       <button
         type="button"
         onClick={handleClick}
         disabled={isPending}
-        className="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+        className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-border bg-white px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer sm:w-auto"
         style={{ boxShadow: "var(--shadow-sm)" }}
       >
         <RefreshCw className={`h-4 w-4 ${isPending ? "animate-spin" : ""}`} />

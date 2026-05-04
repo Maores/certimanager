@@ -152,13 +152,17 @@ export default async function CandidatesPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <h1 className="text-2xl font-bold text-foreground">מועמדים לקורס</h1>
-        <div className="flex items-center gap-2">
-          <SyncLeadsButton />
+        {/* Mobile: Sync full-width row 1, Import + Add 2-up row 2.
+            sm+: all three in a single row at natural width. */}
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-2">
+          <div className="col-span-2 sm:col-span-1">
+            <SyncLeadsButton />
+          </div>
           <Link
             href="/dashboard/candidates/import"
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-gray-50 cursor-pointer"
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-border bg-white px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-gray-50 cursor-pointer"
             style={{ boxShadow: "var(--shadow-sm)" }}
           >
             <Upload className="h-4 w-4" />
@@ -166,7 +170,7 @@ export default async function CandidatesPage({
           </Link>
           <Link
             href="/dashboard/candidates/new"
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary-hover cursor-pointer"
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary-hover cursor-pointer"
             style={{ boxShadow: "var(--shadow-sm)" }}
           >
             <UserPlus className="h-4 w-4" />
